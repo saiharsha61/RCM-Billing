@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RCM App Diagnostic</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .test { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .pass { border-left: 4px solid #10b981; }
+        .fail { border-left: 4px solid #ef4444; }
+        button { padding: 10px 20px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>RCM Application Diagnostic</h1>
+    
+    <button onclick="runTests()">Run All Tests</button>
+    
+    <div id="results"></div>
+    
+    <script type="module">
+        async function runTests() {
+            const results = document.getElementById('results');
+            results.innerHTML = '';
+            
+            // Test 1: Check if React loads
+            try {
+                const React = await import('/src/main.jsx');
+                addResult('React Module', 'pass', 'React loaded successfully');
+            } catch(e) {
+                addResult('React Module', 'fail', e.message);
+            }
+            
+            // Test 2: Check mockData
+            try {
+                const mockData = await import('/src/lib/mockData.js');
+                addResult('Mock Data', 'pass', `Loaded ${mockData.default.patients.length} patients`);
+            } catch(e) {
+                addResult('Mock Data', 'fail', e.message);
+            }
+            
+            // Test 3: Check validation
+            try {
+                const validation = await import('/src/lib/validation.js');
+                addResult('Validation Functions', 'pass', 'Validation module loaded');
+            } catch(e) {
+                addResult('Validation Functions', 'fail', e.message);
+            }
+            
+            // Test 4: Check encryption
+            try {
+                const encryption = await import('/src/lib/encryption.js');
+                const masked = encryption.maskSSN('123-45-6789');
+                addResult('Encryption/Masking', 'pass', `SSN masked: ${masked}`);
+            } catch(e) {
+                addResult('Encryption/Masking', 'fail', e.message);
+            }
+        }
+        
+        function addResult(name, status, message) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test ${status}`;
+            div.innerHTML = `<strong>${name}:</strong> ${message}`;
+            results.appendChild(div);
+        }
+        
+        window.runTests = runTests;
+    </script>
+</body>
+</html>

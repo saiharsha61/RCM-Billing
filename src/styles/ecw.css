@@ -1,0 +1,486 @@
+/* ECW-Style CSS Framework */
+/* Based on eClinicalWorks V12 Interface */
+
+:root {
+    /* ECW Primary Colors */
+    --ecw-primary-blue: #1976d2;
+    --ecw-light-blue: #e3f2fd;
+    --ecw-dark-blue: #0d47a1;
+    --ecw-header-blue: #1e88e5;
+
+    /* ECW Status Colors */
+    --ecw-success: #4caf50;
+    --ecw-warning: #ffc107;
+    --ecw-error: #f44336;
+    --ecw-info: #2196f3;
+
+    /* ECW Grays */
+    --ecw-bg-gray: #f5f5f5;
+    --ecw-white: #ffffff;
+    --ecw-border: #e0e0e0;
+    --ecw-border-dark: #bdbdbd;
+
+    /* ECW Text Colors */
+    --ecw-text-primary: #212121;
+    --ecw-text-secondary: #757575;
+    --ecw-text-disabled: #9e9e9e;
+
+    /* ECW Table Colors */
+    --ecw-table-header: #f5f5f5;
+    --ecw-table-hover: #fafafa;
+    --ecw-table-selected: #e3f2fd;
+
+    /* ECW Appointment Colors */
+    --ecw-appt-blue: #2196f3;
+    --ecw-appt-green: #4caf50;
+    --ecw-appt-yellow: #ffc107;
+    --ecw-appt-pink: #e91e63;
+    --ecw-appt-orange: #ff9800;
+    --ecw-appt-purple: #9c27b0;
+
+    /* Spacing */
+    --ecw-spacing-xs: 4px;
+    --ecw-spacing-sm: 8px;
+    --ecw-spacing-md: 16px;
+    --ecw-spacing-lg: 24px;
+    --ecw-spacing-xl: 32px;
+
+    /* Typography */
+    --ecw-font-family: 'Arial', 'Helvetica', sans-serif;
+    --ecw-font-size-tiny: 11px;
+    --ecw-font-size-small: 12px;
+    --ecw-font-size-base: 13px;
+    --ecw-font-size-header: 14px;
+    --ecw-font-size-large: 16px;
+
+    /* Borders */
+    --ecw-border-radius: 2px;
+    --ecw-border-radius-lg: 4px;
+
+    /* Shadows */
+    --ecw-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+    --ecw-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.16);
+    --ecw-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.20);
+
+    /* Sidebar */
+    --ecw-sidebar-width: 60px;
+    --ecw-sidebar-bg: #263238;
+    --ecw-sidebar-icon-color: #b0bec5;
+    --ecw-sidebar-active: var(--ecw-primary-blue);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--ecw-font-family);
+    font-size: var(--ecw-font-size-base);
+    color: var(--ecw-text-primary);
+    background-color: var(--ecw-bg-gray);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ECW Button Styles */
+.ecw-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 16px;
+    font-size: var(--ecw-font-size-base);
+    font-weight: 500;
+    border: none;
+    border-radius: var(--ecw-border-radius-lg);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.ecw-btn-primary {
+    background-color: var(--ecw-primary-blue);
+    color: white;
+    box-shadow: var(--ecw-shadow-sm);
+}
+
+.ecw-btn-primary:hover {
+    background-color: var(--ecw-dark-blue);
+    box-shadow: var(--ecw-shadow-md);
+}
+
+.ecw-btn-secondary {
+    background-color: white;
+    color: var(--ecw-text-primary);
+    border: 1px solid var(--ecw-border);
+}
+
+.ecw-btn-secondary:hover {
+    background-color: var(--ecw-bg-gray);
+}
+
+.ecw-btn-sm {
+    padding: 4px 12px;
+    font-size: var(--ecw-font-size-small);
+}
+
+/* ECW Input Styles */
+.ecw-input {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: var(--ecw-font-size-base);
+    font-family: var(--ecw-font-family);
+    border: 1px solid var(--ecw-border-dark);
+    border-radius: var(--ecw-border-radius);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.ecw-input:focus {
+    border-color: var(--ecw-primary-blue);
+}
+
+.ecw-input-sm {
+    padding: 4px 6px;
+    font-size: var(--ecw-font-size-small);
+}
+
+/* ECW Table Styles */
+.ecw-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    font-size: var(--ecw-font-size-base);
+    border: 1px solid var(--ecw-border);
+}
+
+.ecw-table thead {
+    background-color: var(--ecw-table-header);
+}
+
+.ecw-table th {
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--ecw-text-secondary);
+    font-size: var(--ecw-font-size-small);
+    border-bottom: 1px solid var(--ecw-border);
+}
+
+.ecw-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--ecw-border);
+}
+
+.ecw-table tbody tr:hover {
+    background-color: var(--ecw-table-hover);
+}
+
+.ecw-table tbody tr.selected {
+    background-color: var(--ecw-table-selected);
+}
+
+.ecw-table tbody tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+/* ECW Card Styles */
+.ecw-card {
+    background-color: white;
+    border: 1px solid var(--ecw-border);
+    border-radius: var(--ecw-border-radius-lg);
+    box-shadow: var(--ecw-shadow-sm);
+}
+
+.ecw-card-header {
+    padding: 12px 16px;
+    background-color: var(--ecw-table-header);
+    border-bottom: 1px solid var(--ecw-border);
+    font-weight: 600;
+    font-size: var(--ecw-font-size-header);
+}
+
+.ecw-card-body {
+    padding: 16px;
+}
+
+/* ECW Badge/Label */
+.ecw-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: var(--ecw-font-size-tiny);
+    font-weight: 500;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.ecw-badge-success {
+    background-color: #e8f5e9;
+    color: var(--ecw-success);
+}
+
+.ecw-badge-warning {
+    background-color: #fff3e0;
+    color: #f57c00;
+}
+
+.ecw-badge-error {
+    background-color: #ffebee;
+    color: var(--ecw-error);
+}
+
+.ecw-badge-info {
+    background-color: var(--ecw-light-blue);
+    color: var(--ecw-primary-blue);
+}
+
+/* ECW Tab Styles */
+.ecw-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--ecw-border);
+    background-color: white;
+}
+
+.ecw-tab {
+    padding: 10px 20px;
+    font-size: var(--ecw-font-size-base);
+    color: var(--ecw-text-secondary);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ecw-tab:hover {
+    color: var(--ecw-text-primary);
+    background-color: var(--ecw-bg-gray);
+}
+
+.ecw-tab.active {
+    color: var(--ecw-primary-blue);
+    border-bottom-color: var(--ecw-primary-blue);
+    font-weight: 600;
+}
+
+/* ECW Icon Button */
+.ecw-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--ecw-text-secondary);
+    transition: all 0.2s;
+}
+
+.ecw-icon-btn:hover {
+    background-color: var(--ecw-bg-gray);
+    color: var(--ecw-primary-blue);
+}
+
+.ecw-icon-btn.active {
+    background-color: var(--ecw-light-blue);
+    color: var(--ecw-primary-blue);
+}
+
+/* ECW Checkbox */
+.ecw-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: var(--ecw-font-size-base);
+}
+
+.ecw-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--ecw-primary-blue);
+}
+
+/* ECW Select/Dropdown */
+.ecw-select {
+    padding: 6px 8px;
+    font-size: var(--ecw-font-size-base);
+    font-family: var(--ecw-font-family);
+    border: 1px solid var(--ecw-border-dark);
+    border-radius: var(--ecw-border-radius);
+    outline: none;
+    background-color: white;
+    cursor: pointer;
+}
+
+.ecw-select:focus {
+    border-color: var(--ecw-primary-blue);
+}
+
+/* ECW Toolbar */
+.ecw-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: white;
+    border-bottom: 1px solid var(--ecw-border);
+}
+
+/* ECW Quick Action Button (Circular with Icon) */
+.ecw-quick-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.ecw-quick-action:hover {
+    transform: translateY(-2px);
+}
+
+.ecw-quick-action-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: var(--ecw-text-primary);
+    box-shadow: var(--ecw-shadow-sm);
+}
+
+.ecw-quick-action-label {
+    font-size: var(--ecw-font-size-tiny);
+    color: var(--ecw-text-secondary);
+    text-align: center;
+}
+
+/* Utility Classes */
+.ecw-text-primary {
+    color: var(--ecw-text-primary);
+}
+
+.ecw-text-secondary {
+    color: var(--ecw-text-secondary);
+}
+
+.ecw-text-blue {
+    color: var(--ecw-primary-blue);
+}
+
+.ecw-text-success {
+    color: var(--ecw-success);
+}
+
+.ecw-text-warning {
+    color: #f57c00;
+}
+
+.ecw-text-error {
+    color: var(--ecw-error);
+}
+
+.ecw-bg-gray {
+    background-color: var(--ecw-bg-gray);
+}
+
+.ecw-bg-white {
+    background-color: white;
+}
+
+.ecw-bg-blue-light {
+    background-color: var(--ecw-light-blue);
+}
+
+.ecw-font-bold {
+    font-weight: 600;
+}
+
+.ecw-font-normal {
+    font-weight: 400;
+}
+
+.ecw-text-sm {
+    font-size: var(--ecw-font-size-small);
+}
+
+.ecw-text-base {
+    font-size: var(--ecw-font-size-base);
+}
+
+.ecw-text-lg {
+    font-size: var(--ecw-font-size-large);
+}
+
+/* Layout Utilities */
+.ecw-flex {
+    display: flex;
+}
+
+.ecw-flex-col {
+    flex-direction: column;
+}
+
+.ecw-items-center {
+    align-items: center;
+}
+
+.ecw-justify-between {
+    justify-content: space-between;
+}
+
+.ecw-gap-sm {
+    gap: var(--ecw-spacing-sm);
+}
+
+.ecw-gap-md {
+    gap: var(--ecw-spacing-md);
+}
+
+.ecw-p-sm {
+    padding: var(--ecw-spacing-sm);
+}
+
+.ecw-p-md {
+    padding: var(--ecw-spacing-md);
+}
+
+.ecw-p-lg {
+    padding: var(--ecw-spacing-lg);
+}
+
+.ecw-m-sm {
+    margin: var(--ecw-spacing-sm);
+}
+
+.ecw-m-md {
+    margin: var(--ecw-spacing-md);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--ecw-bg-gray);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--ecw-border-dark);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--ecw-text-secondary);
+}

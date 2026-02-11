@@ -14,7 +14,7 @@ export function maskSSN(ssn) {
 
 /**
  * Mask Date of Birth
- * Example: 1985-03-15 → **/**/**** (Age: 38)
+ * Example: 1985-03-15 becomes masked with age shown
  */
 export function maskDOB(dob) {
     if (!dob) return '';
