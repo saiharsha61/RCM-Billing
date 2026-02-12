@@ -16,6 +16,7 @@ import { NDCValidator, AnesthesiaCalculator } from './components/ClinicalAdvance
 import RxEligibility from './components/RxEligibility';
 import { PatientKiosk } from './components/PatientKiosk';
 import { FHIRDocumentation } from './components/FHIRDocumentation';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { autoPopulateAuthNumber, validateClaimAuthorization, getExpiringAuthorizations } from './lib/authorizationUtils';
 import { processClaimSubmission, getDecrementNotification } from './lib/visitDecrementUtils';
 import './index.css';
@@ -104,6 +105,7 @@ function App() {
             { name: 'Denials', icon: '!' },
             { name: 'Documents', icon: '⊞' },
             { name: 'API Docs', icon: '🔌' },
+            { name: 'Analytics', icon: '📊' },
             { name: 'Reports', icon: '▥' },
             { name: 'Settings', icon: '⚙' }
           ].map(({ name, icon }) => (
@@ -230,6 +232,7 @@ function App() {
           {currentPage === 'denials' && <DenialsPage />}
           {currentPage === 'documents' && <DocumentsPage />}
           {currentPage === 'api-docs' && <FHIRDocumentation />}
+          {currentPage === 'analytics' && <AnalyticsDashboard />}
           {currentPage === 'reports' && <ReportsDashboard />}
           {currentPage === 'settings' && <AdminSettings />}
         </div>

@@ -643,6 +643,198 @@ export const serviceAuthorizations = [
     }
 ];
 
+// =====================================================
+// PHASE F: REAL-WORLD DATA (Mission, TX Wound Care Clinic)
+// =====================================================
+
+/**
+ * WOUND CARE PROVIDERS (Real providers from Mission, TX clinic)
+ */
+export const woundCareProviders = [
+    {
+        ProviderID: 101,
+        FirstName: 'Jose',
+        LastName: 'Farias-Jimenez',
+        Credentials: 'MD',
+        NPI: '1234701890',
+        TaxID: '74-1234567',
+        LicenseNumber: 'TX-WC-12345',
+        SpecialtyType: 'Wound Care',
+        TaxonomyCode: '207R00000X',
+        Phone: '(956) 555-0101',
+        Email: 'jfarias@vsrwoundcare.com',
+        IsActive: true,
+        facility: 'VSR Luis M Reyes M',
+        city: 'Mission',
+        state: 'TX',
+        CreatedDate: '2023-01-01T08:00:00Z'
+    },
+    {
+        ProviderID: 102,
+        FirstName: 'Ernesto M',
+        LastName: 'Garza Jr',
+        Credentials: 'MD',
+        NPI: '1234702891',
+        TaxID: '74-1234568',
+        LicenseNumber: 'TX-WC-12346',
+        SpecialtyType: 'Wound Care',
+        TaxonomyCode: '207R00000X',
+        Phone: '(956) 555-0102',
+        Email: 'egarza@vsrwoundcare.com',
+        IsActive: true,
+        facility: 'VSR Luis M Reyes M',
+        city: 'Mission',
+        state: 'TX',
+        CreatedDate: '2023-02-01T08:00:00Z'
+    },
+    {
+        ProviderID: 103,
+        FirstName: 'Reinaldo II',
+        LastName: 'Morales',
+        Credentials: 'MD',
+        NPI: '1234703892',
+        TaxID: '74-1234569',
+        LicenseNumber: 'TX-WC-12347',
+        SpecialtyType: 'Wound Care',
+        TaxonomyCode: '207R00000X',
+        Phone: '(956) 555-0103',
+        Email: 'rmorales@vsrwoundcare.com',
+        IsActive: true,
+        facility: 'VSR Luis M Reyes M',
+        city: 'Mission',
+        state: 'TX',
+        CreatedDate: '2023-03-01T08:00:00Z'
+    },
+    {
+        ProviderID: 104,
+        FirstName: 'Luis M',
+        LastName: 'Reyes',
+        Credentials: 'MD',
+        NPI: '1234704893',
+        TaxID: '74-1234570',
+        LicenseNumber: 'TX-WC-12348',
+        SpecialtyType: 'Wound Care',
+        TaxonomyCode: '207R00000X',
+        Phone: '(956) 585-4357',
+        Email: 'lreyes@vsrwoundcare.com',
+        IsActive: true,
+        facility: 'VSR Luis M Reyes M',
+        city: 'Mission',
+        state: 'TX',
+        CreatedDate: '2023-01-01T08:00:00Z'
+    }
+];
+
+/**
+ * PEDRO SUAREZ PATIENT (Real patient case from Mission, TX)
+ */
+export const pedroSuarezPatient = {
+    PatientID: 9609,
+    AccountNumber: 'MRN-9609',
+    FirstName: 'Pedro',
+    LastName: 'Suarez',
+    DateOfBirth: '1974-06-23',
+    Gender: 'Male',
+    SSN: '453-61-1518',
+    AddressLine1: '5505 LUCY DR',
+    City: 'MISSION',
+    State: 'TX',
+    ZipCode: '78574-6225',
+    County: 'Hidalgo',
+    PhoneHome: '956-569-5822',
+    MaritalStatus: 'Married',
+    PreferredLanguage: 'English',
+    Race: 'White',
+    Ethnicity: 'Hispanic Or Latino',
+    PrimaryCareProvider: 101, // Dr. Farias-Jimenez
+    AccountBalance: 1228.00,
+    PatientBalance: 724.08,
+    // AI Extension Fields
+    propensity_to_pay_score: 0.72,
+    preferred_contact_method: 'phone',
+    optimal_contact_time: 'morning',
+    CreatedDate: '2024-01-15T09:00:00Z'
+};
+
+/**
+ * WOUND CARE VISIT TYPES
+ */
+export const woundCareVisitTypes = [
+    {
+        visit_type_code: 'WOUND',
+        description: 'Wound Care Visit',
+        default_duration_minutes: 30,
+        pos_code: '11', // Office
+        requires_authorization: false,
+        category: 'Wound Care'
+    },
+    {
+        visit_type_code: 'CHK',
+        description: 'Check Out / Follow-up',
+        default_duration_minutes: 15,
+        pos_code: '11',
+        requires_authorization: false,
+        category: 'Follow-up'
+    },
+    {
+        visit_type_code: 'FOLLOW-UP',
+        description: 'Follow-up with Results',
+        default_duration_minutes: 20,
+        pos_code: '11',
+        requires_authorization: false,
+        category: 'Follow-up'
+    },
+    {
+        visit_type_code: 'WOUND-DBRD',
+        description: 'Wound Debridement',
+        default_duration_minutes: 45,
+        pos_code: '11',
+        requires_authorization: true,
+        category: 'Procedure'
+    }
+];
+
+/**
+ * MEDICARE OF TEXAS PAYER
+ */
+export const medicareOfTexasPayer = {
+    payer_id: 'MEDTX',
+    payer_name: 'Medicare of Texas',
+    payer_type: 'Medicare',
+    electronic_payer_id: '00590',
+    address: '7400 W Detroit St, Chandler, AZ 85226',
+    phone: '1-800-633-4227',
+    timely_filing_limit_days: 365,
+    supports_electronic_claims: true,
+    supports_electronic_era: true,
+    supports_270_271: true,
+    historical_denial_rate: 0.08, // 8% denial rate
+    average_reimbursement_rate: 0.85 // 85% of charges
+};
+
+/**
+ * WOUND CARE DIAGNOSES (Common ICD-10 codes)
+ */
+export const woundCareDiagnoses = [
+    { code: 'L97.429', description: 'Non-pressure chronic ulcer of unspecified heel and midfoot with unspecified severity' },
+    { code: 'L97.919', description: 'Non-pressure chronic ulcer of unspecified part of unspecified lower leg with unspecified severity' },
+    { code: 'E11.621', description: 'Type 2 diabetes mellitus with foot ulcer' },
+    { code: 'I96', description: 'Gangrene, not elsewhere classified' },
+    { code: 'L89.154', description: 'Pressure ulcer of sacral region, stage 4' }
+];
+
+/**
+ * WOUND CARE PROCEDURES (Common CPT codes)
+ */
+export const woundCareProcedures = [
+    { code: '97597', description: 'Debridement, open wound, first 20 sq cm or less' },
+    { code: '97598', description: 'Debridement, open wound, each additional 20 sq cm' },
+    { code: '97602', description: 'Removal of devitalized tissue from wound(s), non-selective' },
+    { code: '11042', description: 'Debridement, subcutaneous tissue, first 20 sq cm or less' },
+    { code: '99213', description: 'Office/outpatient visit, est patient, level 3' },
+    { code: '99214', description: 'Office/outpatient visit, est patient, level 4' }
+];
+
 // Export all mock data
 export default {
     providers,
@@ -656,5 +848,12 @@ export default {
     denials,
     itemKeys,
     eligibilityData,
-    serviceAuthorizations
+    serviceAuthorizations,
+    // Phase F: Real-World Data
+    woundCareProviders,
+    pedroSuarezPatient,
+    woundCareVisitTypes,
+    medicareOfTexasPayer,
+    woundCareDiagnoses,
+    woundCareProcedures
 };
