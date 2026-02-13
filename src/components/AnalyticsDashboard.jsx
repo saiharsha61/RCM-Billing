@@ -3,6 +3,7 @@ import mockData from '../lib/mockData';
 import { aiScoring } from '../lib/aiScoringEngine';
 
 export function AnalyticsDashboard() {
+    console.log('AnalyticsDashboard mounting', { mockData, aiScoring });
     const [activeTab, setActiveTab] = useState('overview');
 
     return (
@@ -96,7 +97,7 @@ function OverviewTab() {
 
 // Claims AI Tab
 function ClaimsAITab() {
-    const claimsWithRisk = mockData.claims.map(claim => ({
+    const claimsWithRisk = (mockData.claims || []).map(claim => ({
         ...claim,
         denial_risk: aiScoring.calculateDenialRisk(claim, mockData.medicareOfTexasPayer || {})
     }));
@@ -178,59 +179,59 @@ function ProvidersTab() {
             <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>🩺 Wound Care Specialists (Mission, TX)</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-                    {mockData.woundCareProviders.map(provider => (
-                        <div key={provider.Provider ID} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
-                    <div style={{ fontWeight: '600', color: '#1e293b', marginBottom: '4px' }}>
-                        Dr. {provider.LastName}, {provider.FirstName}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
-                        {provider.SpecialtyType} • NPI: {provider.NPI}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
-                        📍 {provider.facility}, {provider.city}, {provider.state}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '8px' }}>
-                        📞 {provider.Phone} • ✉️ {provider.Email}
-                    </div>
+                    {(mockData.woundCareProviders || []).map(provider => (
+                        <div key={provider.ProviderID} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+                            <div style={{ fontWeight: '600', color: '#1e293b', marginBottom: '4px' }}>
+                                Dr. {provider.LastName}, {provider.FirstName}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
+                                {provider.SpecialtyType} • NPI: {provider.NPI}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                📍 {provider.facility}, {provider.city}, {provider.state}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '8px' }}>
+                                📞 {provider.Phone} • ✉️ {provider.Email}
+                            </div>
+                        </div>
+                    ))}
                 </div>
-          ))}
             </div>
-        </div>
 
-      {/* Provider Performance */ }
-    <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>📊 Provider Productivity (Last 30 Days)</h3>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-            <thead>
-                <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Provider</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>Encounters</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>Revenue</th>
-                    <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>Avg E&M</th>
-                </tr>
-            </thead>
-            <tbody>
-                {[...mockData.providers, ...mockData.woundCareProviders].slice(0, 7).map((prov, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '12px' }}>
-                            <div style={{ fontWeight: '600', color: '#1e293b' }}>Dr. {prov.LastName}</div>
-                            <div style={{ fontSize: '12px', color: '#64748b' }}>{prov.SpecialtyType}</div>
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>{Math.floor(Math.random() * 80) + 20}</td>
-                        <td style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>${((Math.random() * 40000) + 20000).toFixed(0).toLocaleString()}</td>
-                        <td style={{ padding: '12px', textAlign: 'center' }}>{(Math.random() * 2 + 3).toFixed(1)}</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    </div>
-    </div >
-  );
+            {/* Provider Performance */}
+            <div style={{ background: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>📊 Provider Productivity (Last 30 Days)</h3>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                    <thead>
+                        <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Provider</th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>Encounters</th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>Revenue</th>
+                            <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>Avg E&M</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {[...(mockData.providers || []), ...(mockData.woundCareProviders || [])].slice(0, 7).map((prov, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                <td style={{ padding: '12px' }}>
+                                    <div style={{ fontWeight: '600', color: '#1e293b' }}>Dr. {prov.LastName}</div>
+                                    <div style={{ fontSize: '12px', color: '#64748b' }}>{prov.SpecialtyType}</div>
+                                </td>
+                                <td style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>{Math.floor(Math.random() * 80) + 20}</td>
+                                <td style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>${((Math.random() * 40000) + 20000).toFixed(0).toLocaleString()}</td>
+                                <td style={{ padding: '12px', textAlign: 'center' }}>{(Math.random() * 2 + 3).toFixed(1)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div >
+    );
 }
 
 // Collections AI Tab
 function CollectionsAITab() {
-    const patientsWithScores = [mockData.pedroSuarezPatient, ...mockData.patients].map(p => ({
+    const patientsWithScores = [mockData.pedroSuarezPatient, ...(mockData.patients || [])].filter(Boolean).map(p => ({
         ...p,
         propensity_score: p.propensity_to_pay_score || aiScoring.calculatePropensityToPay(p, p.PatientBalance || 0)
     })).sort((a, b) => a.propensity_score - b.propensity_score);

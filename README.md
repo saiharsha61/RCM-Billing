@@ -1,239 +1,98 @@
-# RCM Billing System
+# AI-Native RCM Platform (eCW V12 Style)
 
-> A HIPAA-compliant Revenue Cycle Management (RCM) application built with React
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![React](https://img.shields.io/badge/React-18-blue)](https://reactjs.org/)
+A comprehensive Revenue Cycle Management (RCM) platform built with React, mimicking the workflows of eClinicalWorks V12 but enhanced with AI-driven features, FHIR interoperability, and predictive analytics.
 
 ## 🚀 Features
 
 ### Core RCM Modules
-- **📊 Dashboard** - Revenue overview with KPIs and priority queue
-- **👥 Patient Demographics** - Patient registration and management
-- **📅 Appointments** - Appointment scheduling and tracking
-- **✅ Eligibility Verification** - Insurance coverage verification
-- **💊 Medical Coding** - CPT/ICD-10 code selection and charge entry
-- **📋 Claims Management** - Claims submission and status tracking
-- **💰 Payment Posting** - ERA posting and payment reconciliation
-- **⚠️ Denial Management** - Denial tracking and appeal workflow
-- **📈 Reports** - Business intelligence and analytics dashboard
+- **Patient Registration**: Demographics, SOGI data, insurance & guarantor management.
+- **Eligibility Verification**: Real-time 270/271 EDI transaction simulation.
+- **Prior Authorization**: Automated auth tracking, visit chart decrements, and expiration alerts.
+- **Clinical Documentation**: "Treatment Window" with smart forms, CPT/ICD-10/NDC coding.
+- **Claims Management**: Claim scrubbers, denial routing, and payment posting.
+- **Patient Kiosk**: Self-service check-in and copay payments.
 
-### 🔒 HIPAA Security Features
-- **Authentication** - Secure login/logout system
-- **Session Management** - Auto-logout after 15 minutes of inactivity
-- **Data Masking** - Role-based masking of PHI (SSN, DOB, phone, email)
-- **Audit Logging** - Comprehensive tracking of all PHI access
-- **Password Security** - Strong password requirements and strength meter
-- **Role-Based Access Control** - Different permission levels (Admin, Billing, Front Desk, Viewer)
+### 🧠 AI & Predictive Analytics
+- **No-Show Risk Scoring**: Predicts appointment no-shows based on 7 factors (history, distance, weather, etc.).
+- **Denial Risk Prediction**: Analyzes claims before submission for potential denials (authorization missing, mismatch, etc.).
+- **Propensity-to-Pay**: Scores patients on likelihood to pay balances to optimize collection strategies.
+- **Smart Worklists**: AI-prioritized task lists for staff efficiency.
+
+### 🔥 FHIR R4 API Layer
+- **RESTful API**: Full support for `Patient`, `Observation`, `Condition`, `MedicationRequest`, and `DocumentReference` resources.
+- **SMART on FHIR**: OAuth 2.0 authentication with scope-based access control.
+- **Interactive Documentation**: Built-in Swagger-like UI to test API endpoints directly.
+
+### 📊 Analytics Dashboard
+- **RCM KPIs**: Real-time tracking of Days in A/R, Net Collection Rate, Denial Rate.
+- **Provider Productivity**: RVU tracking and encounter volume (featuring Mission, TX wound care data).
+- **Financial Visualization**: Interactive charts for revenue by payer and A/R aging buckets.
 
 ## 🛠️ Tech Stack
+- **Frontend**: React 18, Vite, CSS Modules (eCW-styled)
+- **State Management**: React Hooks & Context
+- **Security**: AES-256-GCM encryption for clinical notes, PBKDF2 for keys, Break-glass access logs.
+- **Database**: Mock SQL schema with relational integrity (Providers, Patients, Claims, etc.).
 
-- **Frontend:** React 18 with Hooks
-- **Build Tool:** Vite
-- **Styling:** Inline styles (light theme)
-- **Authentication:** Mock (Supabase-ready)
-- **State Management:** React useState/useEffect
-- ** Security:** Custom HIPAA compliance utilities
+## 📦 Installation & Setup
 
-## 📦 Installation
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/saiharsha61/AI-RCM-Platform.git
+   cd AI-RCM-Platform
+   ```
 
-### Prerequisites
-```bash
-Node.js >= 14.0.0
-npm >= 6.0.0
-```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### Setup
-```bash
-# Clone the repository
-git clone https://github.com/saiharsha61/RCM-Billing.git
-cd RCM-Billing
+3. **Start the development server**
+   ```bash
+   npm run dev
+   ```
 
-# Install dependencies
-npm install
+4. **Access the application**
+   - Open browser to `http://localhost:5173` (or port shown in terminal)
+   - **Login**: `admin` / `password123`
 
-# Start development server
-npm run dev
-```
+## 🧪 How to Test
 
-The application will be available at `http://localhost:5173`
+### 1. Test AI Features
+- Go to **Patient Demographics**, search for "Pedro Suarez" (MRN 9609).
+- Observe the **Propensity Score** badge.
+- Go to **Scheduler**, create an appointment. See the **No-Show Risk** score calculated instantly.
 
-## 🔑 Demo Credentials
+### 2. Test FHIR API
+- Click **API Docs** (🔌 icon) in the sidebar.
+- Go to **Authentication** tab -> Click **"Authorize"** -> **"Exchange Token"**.
+- Copy the access token.
+- Go to **API Tester** tab, paste token, and click **"GET /Patient"**.
 
-```
-Email: demo@rcmbilling.com
-Password: demo123
-```
+### 3. Test Analytics
+- Click **Analytics** (📊 icon) in the sidebar.
+- Explore the **Claims AI** tab to see denial risk distribution.
+- Check **Providers** tab to see wound care specialist performance.
 
 ## 📁 Project Structure
 
 ```
-RCM-Billing/
-├── src/
-│   ├── lib/
-│   │   ├── auth.js              # Authentication service
-│   │   ├── auditLog.js          # HIPAA audit logging
-│   │   ├── encryption.js        # Data masking utilities
-│   │   ├── passwordValidation.js # Password validation
-│   │   └── sessionManager.js    # Session timeout manager
-│   ├── App.jsx                  # Main application
-│   ├── index.css                # Global styles
-│   └── main.jsx                 # Entry point
-├── public/
-├── package.json
-└── README.md
+src/
+├── components/        # React components (Clinical, RCM, Admin, UI)
+├── lib/              # core logic & utilities
+│   ├── aiScoringEngine.js  # ML models for risk/propensity
+│   ├── fhirServer.js       # Mock FHIR R4 server
+│   ├── fhirAuth.js         # OAuth 2.0 implementation
+│   ├── mockData.js         # Seed data (including Mission, TX clinic)
+│   └── cryptoService.js    # Encryption service
+├── database/         # SQL schema definitions
+└── assets/           # Static assets
 ```
 
-## 🔐 Security Features
+## 🔒 Security & Compliance
+- **HIPAA**: Audit logs for all data access (`auditLog.js`).
+- **Encryption**: Sensitive clinical notes encrypted at rest.
+- **Access Control**: Role-based access (Provider, Front Desk, Biller).
 
-### Data Masking
-Sensitive patient data is masked based on user role:
-- **SSN:** `***-**-6789` (last 4 digits visible)
-- **DOB:** `**/**/**** (Age: 38)`
-- **Phone:** `(***) ***-4567`
-- **Email:** `j***@email.com`
-
-### Role Permissions
-| Role | SSN | DOB | Insurance | Phone | Email | Audit Logs |
-|------|-----|-----|-----------|-------|-------|------------|
-| Admin | Full | Full | Full | Full | Full | Yes |
-| Billing | Masked | Full | Full | Full | Full | No |
-| Front Desk | Masked | Masked | Full | Masked | Full | No |
-| Viewer | Masked | Masked | Masked | Masked | Masked | No |
-
-### Audit Logging
-All PHI access is logged with:
-- Timestamp
-- User ID and email
-- Action (VIEW, CREATE, UPDATE, DELETE, EXPORT)
-- Resource type
-- IP address and session ID
-
-View audit logs in the **Audit Logs** page (Admin only).
-
-## 🚀 Usage
-
-### Login
-1. Navigate to `http://localhost:5173`
-2. Enter credentials (see Demo Credentials above)
-3. Click "Sign In"
-
-### Navigation
-- Use the sidebar to navigate between modules
-- Current page is highlighted in blue
-- Logout button is at the bottom of the sidebar
-
-### Session Management
-- Sessions automatically expire after 15 minutes of inactivity
-- A warning popup appears 2 minutes before timeout
-- Click "Extend Session" to continue or "Logout Now" to end session
-
-## 🔧 Configuration
-
-### Supabase Integration (Optional)
-To use real Supabase authentication:
-
-1. Install Supabase client:
-```bash
-npm install @supabase/supabase-js
-```
-
-2. Create a Supabase project at [supabase.com](https://supabase.com)
-
-3. Update `src/lib/auth.js` with your credentials:
-```javascript
-const supabaseUrl = 'YOUR_SUPABASE_URL';
-const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
-```
-
-4. Sign a Business Associate Agreement (BAA) for HIPAA compliance
-
-## 📊 Module Details
-
-### Dashboard
-- **KPIs:** Expected Revenue, At Risk, Clean Rate, Needs Action
-- **Priority Queue:** Urgent denials, reviews, and payments
-
-### Patients
-- Patient list with search
-- Registration form
-- Data masking based on role
-- Audit logging on view
-
-### Claims
-- Claims table with filters
-- Status tracking (Draft, Submitted, Paid, Rejected)
-- Amount totals
-
-### Payments
-- Payment entry form
-- ERA support
-- Recent payments table
-
-### Denials
-- Denials tracking
-- Reason codes (CO-50, CO-197, etc.)
-- Appeal workflow
-
-### Reports
-- Revenue by Provider
-- Claims Aging
-- Denial Rate Analysis
-- Collection Metrics
-- AR Aging
-- Payer Performance
-
-## 🔒 HIPAA Compliance
-
-### Implemented
-✅ Data masking (role-based)  
-✅ Audit logging (all PHI access)  
-✅ Session management (auto-timeout)  
-✅ Strong passwords  
-✅ Role-based access control  
-✅ User authentication  
-
-### Required for Production
-⏳ Supabase BAA (Business Associate Agreement)  
-⏳ Production encryption keys (AWS KMS/Azure Key Vault)  
-⏳ Multi-factor authentication (MFA)  
-⏳ Staff HIPAA training  
-⏳ Breach notification procedures  
-
-See `hipaa_compliance_checklist.md` for detailed compliance requirements.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-
-This is a demo application and should NOT be used with real patient data without:
-- Signing BAA with Supabase (or your backend provider)
-- Implementing production-grade encryption
-- Conducting security audits
-- Establishing HIPAA compliance procedures
-
-## 🙏 Acknowledgments
-
-- Built with [React](https://reactjs.org/)
-- Powered by [Vite](https://vitejs.dev/)
-- Security best practices from [HIPAA Journal](https://www.hipaajournal.com/)
-
-## 📧 Contact
-
-For questions or support, please open an issue on GitHub.
-
----
-
-**⭐ Star this repository if you find it helpful!**
+## 📄 License
+Proprietary - Staffingly Inc.
