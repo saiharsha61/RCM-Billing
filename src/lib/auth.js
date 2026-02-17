@@ -45,6 +45,13 @@ const MOCK_USERS = [
         password: 'frontdesk123',
         name: 'Front Desk Staff',
         role: 'front_desk'
+    },
+    {
+        id: '6',
+        email: 'verifier@rcmbilling.com',
+        password: 'verifier123',
+        name: 'Verification Specialist',
+        role: 'verification_specialist'
     }
 ];
 

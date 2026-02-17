@@ -23,9 +23,53 @@ import { autoPopulateAuthNumber, validateClaimAuthorization, getExpiringAuthoriz
 import { processClaimSubmission, getDecrementNotification } from './lib/visitDecrementUtils';
 import './index.css';
 
+// =====================================================
+// ROLE-BASED NAVIGATION CONFIG (SaaS Plugin Model)
+// Each role maps to the sidebar pages they can access
+// =====================================================
+const ROLE_NAV_CONFIG = {
+  admin: null, // null = all pages
+  provider: null,
+  biller: null,
+  front_desk: null,
+  verification_specialist: ['eligibility', 'authorizations'],
+};
+
+// Default landing page per role
+const ROLE_DEFAULT_PAGE = {
+  admin: 'dashboard',
+  provider: 'dashboard',
+  biller: 'claims',
+  front_desk: 'appointments',
+  verification_specialist: 'eligibility',
+};
+
+// Full nav items list
+const ALL_NAV_ITEMS = [
+  { name: 'Dashboard', icon: '■', page: 'dashboard' },
+  { name: 'Tasks', icon: '✓', page: 'tasks' },
+  { name: 'Patients', icon: '◉', page: 'patients' },
+  { name: 'Appointments', icon: '▤', page: 'appointments' },
+  { name: 'Messages', icon: '◈', page: 'messages' },
+  { name: 'Telehealth', icon: '▶', page: 'telehealth' },
+  { name: 'Eligibility', icon: '≡', page: 'eligibility' },
+  { name: 'Referrals', icon: '→', page: 'referrals' },
+  { name: 'Authorizations', icon: '◆', page: 'authorizations' },
+  { name: 'Clinical', icon: '🩺', page: 'clinical' },
+  { name: 'Coding', icon: '#', page: 'coding' },
+  { name: 'Claims', icon: '▣', page: 'claims' },
+  { name: 'Payments', icon: '$', page: 'payments' },
+  { name: 'Denials', icon: '!', page: 'denials' },
+  { name: 'Documents', icon: '⊞', page: 'documents' },
+  { name: 'API Docs', icon: '🔌', page: 'api docs' },
+  { name: 'Analytics', icon: '📊', page: 'analytics' },
+  { name: 'Reports', icon: '▥', page: 'reports' },
+  { name: 'Settings', icon: '⚙', page: 'settings' }
+];
+
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
   const [user, setUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   const [activeWorklist, setActiveWorklist] = useState(null);
   const [showClaimsWorklist, setShowClaimsWorklist] = useState(false);
@@ -39,6 +83,9 @@ function App() {
 
   const handleLogin = (userData) => {
     setUser(userData);
+    // Set default page based on role
+    const defaultPage = ROLE_DEFAULT_PAGE[userData.role] || 'dashboard';
+    setCurrentPage(defaultPage);
   };
 
   const handleLogout = async () => {
@@ -106,65 +153,51 @@ function App() {
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation — filtered by role */}
         <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
-          {[
-            { name: 'Dashboard', icon: '■' },
-            { name: 'Tasks', icon: '✓' },
-            { name: 'Patients', icon: '◉' },
-            { name: 'Appointments', icon: '▤' },
-            { name: 'Messages', icon: '◈' },
-            { name: 'Telehealth', icon: '▶' },
-            { name: 'Eligibility', icon: '≡' },
-            { name: 'Referrals', icon: '→' },
-            { name: 'Authorizations', icon: '◆' },
-            { name: 'Clinical', icon: '🩺' },
-            { name: 'Coding', icon: '#' },
-            { name: 'Claims', icon: '▣' },
-            { name: 'Payments', icon: '$' },
-            { name: 'Denials', icon: '!' },
-            { name: 'Documents', icon: '⊞' },
-            { name: 'API Docs', icon: '🔌' },
-            { name: 'Analytics', icon: '📊' },
-            { name: 'Reports', icon: '▥' },
-            { name: 'Settings', icon: '⚙' }
-          ].map(({ name, icon }) => (
-            <button
-              key={name}
-              onClick={() => setCurrentPage(name.toLowerCase())}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                width: '100%',
-                padding: '12px 16px',
-                marginBottom: '4px',
-                border: 'none',
-                borderRadius: '8px',
-                backgroundColor: currentPage === name.toLowerCase() ? '#e3f2fd' : 'transparent',
-                color: currentPage === name.toLowerCase() ? '#0004d0' : '#64748b',
-                fontSize: '14px',
-                fontWeight: currentPage === name.toLowerCase() ? '600' : '500',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s',
-                borderLeft: currentPage === name.toLowerCase() ? '3px solid #a941c6' : '3px solid transparent'
-              }}
-              onMouseEnter={(e) => {
-                if (currentPage !== name.toLowerCase()) {
-                  e.target.style.backgroundColor = '#fff6e8';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (currentPage !== name.toLowerCase()) {
-                  e.target.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              <span style={{ fontSize: '18px' }}>{icon}</span>
-              <span>{name}</span>
-            </button>
-          ))}
+          {(() => {
+            const allowedPages = ROLE_NAV_CONFIG[user.role];
+            const navItems = allowedPages
+              ? ALL_NAV_ITEMS.filter(item => allowedPages.includes(item.page))
+              : ALL_NAV_ITEMS;
+            return navItems.map(({ name, icon, page }) => (
+              <button
+                key={name}
+                onClick={() => setCurrentPage(page)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  width: '100%',
+                  padding: '12px 16px',
+                  marginBottom: '4px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  backgroundColor: currentPage === page ? '#e3f2fd' : 'transparent',
+                  color: currentPage === page ? '#0004d0' : '#64748b',
+                  fontSize: '14px',
+                  fontWeight: currentPage === page ? '600' : '500',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                  borderLeft: currentPage === page ? '3px solid #a941c6' : '3px solid transparent'
+                }}
+                onMouseEnter={(e) => {
+                  if (currentPage !== page) {
+                    e.target.style.backgroundColor = '#fff6e8';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (currentPage !== page) {
+                    e.target.style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                <span style={{ fontSize: '18px' }}>{icon}</span>
+                <span>{name}</span>
+              </button>
+            ));
+          })()}
         </nav>
 
         {/* Logout */}
@@ -425,12 +458,24 @@ function Login({ onLogin }) {
           <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: '500' }}>
             Demo Credentials:
           </p>
-          <p style={{ fontSize: '12px', color: '#475569', marginBottom: '4px' }}>
-            Email: <span style={{ fontWeight: '600' }}>demo@rcmbilling.com</span>
-          </p>
-          <p style={{ fontSize: '12px', color: '#475569' }}>
-            Password: <span style={{ fontWeight: '600' }}>demo123</span>
-          </p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => { setEmail('demo@rcmbilling.com'); setPassword('demo123'); }}
+              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: 'white', fontSize: '11px', cursor: 'pointer', color: '#475569' }}>
+              👤 Admin
+            </button>
+            <button type="button" onClick={() => { setEmail('verifier@rcmbilling.com'); setPassword('verifier123'); }}
+              style={{ padding: '6px 10px', borderRadius: '6px', border: '2px solid #a941c6', backgroundColor: '#faf5ff', fontSize: '11px', cursor: 'pointer', color: '#7c3aed', fontWeight: '700' }}>
+              🔍 Verification Specialist
+            </button>
+            <button type="button" onClick={() => { setEmail('provider@rcmbilling.com'); setPassword('provider123'); }}
+              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: 'white', fontSize: '11px', cursor: 'pointer', color: '#475569' }}>
+              🩺 Provider
+            </button>
+            <button type="button" onClick={() => { setEmail('biller@rcmbilling.com'); setPassword('biller123'); }}
+              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: 'white', fontSize: '11px', cursor: 'pointer', color: '#475569' }}>
+              💲 Biller
+            </button>
+          </div>
         </div>
       </div>
     </div>
