@@ -303,7 +303,7 @@ export async function getDenials(filters = {}) {
 }
 
 // =====================================================
-// SERVICE AUTHORIZATIONS
+// SERVICE AUTHORIZATIONS (Legacy)
 // =====================================================
 
 export async function getAuthorizations(filters = {}) {
@@ -322,6 +322,52 @@ export async function getAuthorizations(filters = {}) {
     if (filters.status) query = query.eq('status', filters.status);
 
     return await query.order('expiration_date');
+}
+
+// =====================================================
+// AUTHORIZATIONS v2 (Phase K: Full PA Lifecycle)
+// =====================================================
+
+export async function getAuthorizationById(id) {
+    if (!useLiveDB()) return { data: null, error: 'Demo mode' };
+    return await supabase.from('authorizations').select('*').eq('auth_id', id).single();
+}
+
+export async function createAuthorization(authData) {
+    if (!useLiveDB()) {
+        return { data: { auth_id: `auth-${Date.now()}`, ...authData }, error: null };
+    }
+    return await supabase.from('authorizations').insert(authData).select().single();
+}
+
+export async function updateAuthorization(id, updates) {
+    if (!useLiveDB()) {
+        return { data: { auth_id: id, ...updates }, error: null };
+    }
+    return await supabase
+        .from('authorizations')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('auth_id', id).select().single();
+}
+
+export async function getExpiringAuths(thresholdDays = 14) {
+    if (!useLiveDB()) return { data: [], error: null };
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() + thresholdDays);
+    return await supabase
+        .from('authorizations').select('*')
+        .eq('status', 'APPROVED')
+        .lte('expiry_date', cutoff.toISOString().split('T')[0])
+        .gte('expiry_date', new Date().toISOString().split('T')[0])
+        .order('expiry_date');
+}
+
+export async function getAuthAuditLog(authId) {
+    if (!useLiveDB()) return { data: [], error: null };
+    return await supabase
+        .from('authorization_audit_log').select('*')
+        .eq('auth_id', authId)
+        .order('timestamp', { ascending: false });
 }
 
 // =====================================================
@@ -456,6 +502,12 @@ const supabaseService = {
     getDenials,
     // Authorizations
     getAuthorizations,
+    // Authorizations v2
+    getAuthorizationById,
+    createAuthorization,
+    updateAuthorization,
+    getExpiringAuths,
+    getAuthAuditLog,
     // Analytics
     getDashboardKPIs,
     getARAgingBuckets,

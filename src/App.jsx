@@ -6,6 +6,7 @@ import { formatSSNForDisplay, calculateAge, isItemKeyEnabled } from './lib/valid
 import { maskSSN, maskPhone, maskEmail } from './lib/encryption';
 import { EligibilityManagement } from './components/EligibilityCheck';
 import { ReferralManagement, ServiceAuthorization } from './components/PriorAuthorization';
+import { AuthorizationHub } from './components/AuthorizationHub';
 import { PatientDemographics } from './components/PatientDemographics';
 import { InsuranceGuarantorInfo } from './components/InsuranceGuarantorInfo';
 import { JellyBeanNotifications, TaskWorklist } from './components/JellyBeanNotifications';
@@ -243,7 +244,7 @@ function App() {
           {currentPage === 'telehealth' && <TelehealthPage />}
           {currentPage === 'eligibility' && <EligibilityManagement patients={mockData.patients} insurances={mockData.eligibilityData} />}
           {currentPage === 'referrals' && <ReferralManagement patients={mockData.patients} referrals={mockData.referrals} providers={mockData.providers} eligibilityData={mockData.eligibilityData} />}
-          {currentPage === 'authorizations' && <ServiceAuthorization patients={mockData.patients} serviceAuths={mockData.serviceAuthorizations} eligibilityData={mockData.eligibilityData} />}
+          {currentPage === 'authorizations' && <AuthorizationHub />}
           {currentPage === 'clinical' && <TreatmentWindow patient={mockData.patients[0]} />}
           {currentPage === 'coding' && <CodingPage />}
           {currentPage === 'claims' && <Claims onOpenWorklist={() => setShowClaimsWorklist(true)} />}
