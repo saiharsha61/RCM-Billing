@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { authService } from './lib/auth';
 import mockData from './lib/mockData';
+import { getDataMode } from './lib/supabaseService';
 import { formatSSNForDisplay, calculateAge, isItemKeyEnabled } from './lib/validation';
 import { maskSSN, maskPhone, maskEmail } from './lib/encryption';
 import { EligibilityManagement } from './components/EligibilityCheck';
@@ -83,6 +84,24 @@ function App() {
           />
           <div style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
             {user.name} | {user.role}
+          </div>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            marginTop: '8px',
+            padding: '4px 10px',
+            borderRadius: '12px',
+            fontSize: '11px',
+            fontWeight: '600',
+            backgroundColor: getDataMode() === 'live' ? '#dcfce7' : '#fef3c7',
+            color: getDataMode() === 'live' ? '#166534' : '#92400e'
+          }}>
+            <span style={{
+              width: '6px', height: '6px', borderRadius: '50%',
+              backgroundColor: getDataMode() === 'live' ? '#22c55e' : '#f59e0b'
+            }}></span>
+            {getDataMode() === 'live' ? '🔗 Supabase Live' : '📦 Demo Mode'}
           </div>
         </div>
 
