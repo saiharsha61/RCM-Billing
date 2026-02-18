@@ -371,6 +371,22 @@ export async function getAuthAuditLog(authId) {
 }
 
 // =====================================================
+// ELIGIBILITY VERIFICATION (Phase L)
+// =====================================================
+
+async function saveVerificationResult(data) {
+    if (!useLiveDB()) return { data: { verification_id: `mock-${Date.now()}`, ...data }, error: null };
+    return supabase.from('eligibility_verifications').insert(data).select().single();
+}
+
+async function getVerificationHistory(patientId = null, limit = 50) {
+    if (!useLiveDB()) return { data: [], error: null };
+    let query = supabase.from('eligibility_verifications').select('*').order('verified_at', { ascending: false }).limit(limit);
+    if (patientId) query = query.eq('patient_id', patientId);
+    return query;
+}
+
+// =====================================================
 // ANALYTICS / DASHBOARD
 // =====================================================
 
@@ -508,6 +524,9 @@ const supabaseService = {
     updateAuthorization,
     getExpiringAuths,
     getAuthAuditLog,
+    // Eligibility
+    saveVerificationResult,
+    getVerificationHistory,
     // Analytics
     getDashboardKPIs,
     getARAgingBuckets,

@@ -5,6 +5,7 @@ import { getDataMode } from './lib/supabaseService';
 import { formatSSNForDisplay, calculateAge, isItemKeyEnabled } from './lib/validation';
 import { maskSSN, maskPhone, maskEmail } from './lib/encryption';
 import { EligibilityManagement } from './components/EligibilityCheck';
+import { EligibilityHub } from './components/EligibilityHub';
 import { ReferralManagement, ServiceAuthorization } from './components/PriorAuthorization';
 import { AuthorizationHub } from './components/AuthorizationHub';
 import { PatientDemographics } from './components/PatientDemographics';
@@ -275,7 +276,7 @@ function App() {
           {currentPage === 'appointments' && <Appointments />}
           {currentPage === 'messages' && <MessagesPage />}
           {currentPage === 'telehealth' && <TelehealthPage />}
-          {currentPage === 'eligibility' && <EligibilityManagement patients={mockData.patients} insurances={mockData.eligibilityData} />}
+          {currentPage === 'eligibility' && <EligibilityHub />}
           {currentPage === 'referrals' && <ReferralManagement patients={mockData.patients} referrals={mockData.referrals} providers={mockData.providers} eligibilityData={mockData.eligibilityData} />}
           {currentPage === 'authorizations' && <AuthorizationHub />}
           {currentPage === 'clinical' && <TreatmentWindow patient={mockData.patients[0]} />}
