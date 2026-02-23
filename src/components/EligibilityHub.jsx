@@ -1,14 +1,17 @@
 /**
  * Eligibility Hub — Full Verification Management
- * Phase L: 5-tab interface for real-time eligibility verification
- * Tab 1: Dashboard (KPIs, verification stats)
+ * Phase L+N2: 5-tab interface for real-time eligibility verification
+ * Tab 1: Dashboard (KPIs, verification stats, SLA indicators)
  * Tab 2: All Patients (status table with quick-verify)
- * Tab 3: Verify Patient (single patient form → full 271 response)
+ * Tab 3: Verify Patient (single patient form → full 271 response + coverage date validation)
  * Tab 4: Batch Verify (multi-patient with progress)
  * Tab 5: History (verification log)
+ *
+ * PRD Coverage: ELG-01→05, USE-04
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { verifyEligibility, batchVerify, getPayerList, getEligibilityMode } from '../lib/eligibilityService';
+import { useTenant } from '../lib/tenantContext.jsx';
 import { BenefitBreakdown } from './BenefitBreakdown';
 import mockData from '../lib/mockData';
 
@@ -37,6 +40,7 @@ const INITIAL_HISTORY = [
 // MAIN HUB COMPONENT
 // =====================================================
 export function EligibilityHub() {
+    const { tenant, tenantId, getSLAThreshold, getTenantConfig } = useTenant();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [patients] = useState(() => {
         const all = [mockData.pedroSuarezPatient, ...(mockData.patients || [])].filter(Boolean);
@@ -48,6 +52,8 @@ export function EligibilityHub() {
     const [patientResults, setPatientResults] = useState({}); // patientId → last result
 
     const eligMode = getEligibilityMode();
+    const eligSLA = getSLAThreshold('eligibility');
+    const autoVerifyHours = getTenantConfig('autoVerifyHours') || 48;
 
     const tabs = [
         { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -106,7 +112,7 @@ export function EligibilityHub() {
                             Eligibility Verification Hub
                         </h1>
                         <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>
-                            Real-time insurance eligibility verification (270/271)
+                            {tenant?.name ? `${tenant.name} · ` : ''}Real-time insurance eligibility verification (270/271)
                         </p>
                     </div>
                     <div style={{
@@ -151,7 +157,7 @@ export function EligibilityHub() {
             </div>
 
             {/* Tab Content */}
-            {activeTab === 'dashboard' && <DashboardTab stats={stats} history={verificationHistory} />}
+            {activeTab === 'dashboard' && <DashboardTab stats={stats} history={verificationHistory} eligSLA={eligSLA} autoVerifyHours={autoVerifyHours} />}
             {activeTab === 'patients' && (
                 <AllPatientsTab
                     patients={patients}
@@ -185,7 +191,7 @@ export function EligibilityHub() {
 // =====================================================
 // TAB 1: DASHBOARD
 // =====================================================
-function DashboardTab({ stats, history }) {
+function DashboardTab({ stats, history, eligSLA, autoVerifyHours }) {
     const kpis = [
         { label: 'Total Patients', value: stats.total, color: '#0004d0', icon: '◉' },
         { label: 'Verified Today', value: stats.todayCount, color: '#a941c6', icon: '✓' },
@@ -195,8 +201,39 @@ function DashboardTab({ stats, history }) {
         { label: 'Total Checks', value: stats.verified, color: '#3b82f6', icon: '≡' },
     ];
 
+    // SLA color coding (USE-04)
+    const slaColor = eligSLA <= 12 ? '#ef4444' : eligSLA <= 24 ? '#f59e0b' : '#10b981';
+
     return (
         <div>
+            {/* SLA + Auto-Verify Status Bar (USE-04, ELG-05) */}
+            <div style={{
+                display: 'flex', gap: '12px', marginBottom: '20px',
+            }}>
+                <div style={{
+                    flex: 1, padding: '12px 16px', borderRadius: '8px',
+                    backgroundColor: `${slaColor}10`, border: `1px solid ${slaColor}30`,
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                }}>
+                    <span style={{ fontSize: '18px' }}>⏱</span>
+                    <div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Eligibility SLA</div>
+                        <div style={{ fontSize: '16px', fontWeight: '800', color: slaColor }}>{eligSLA}h turnaround</div>
+                    </div>
+                </div>
+                <div style={{
+                    flex: 1, padding: '12px 16px', borderRadius: '8px',
+                    backgroundColor: '#eef2ff', border: '1px solid #c7d2fe',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                }}>
+                    <span style={{ fontSize: '18px' }}>🔄</span>
+                    <div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Auto Re-Verify (ELG-05)</div>
+                        <div style={{ fontSize: '16px', fontWeight: '800', color: '#6366f1' }}>T-{autoVerifyHours}h before service</div>
+                    </div>
+                </div>
+            </div>
+
             {/* KPI Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
                 {kpis.map(kpi => (
@@ -551,6 +588,11 @@ function VerifyPatientTab({ patients, eligibilityData, onVerify, showNotif }) {
                             </div>
                         )}
 
+                        {/* Coverage Date Validation (ELG-03) */}
+                        {result.coverage && (
+                            <CoverageDateValidation coverage={result.coverage} serviceDate={serviceDate} />
+                        )}
+
                         {/* Benefits Grid */}
                         {result.benefits && (
                             <BenefitBreakdown eligibilityData={{ benefits: result.benefits }} />
@@ -810,6 +852,61 @@ function HistoryTab({ history }) {
                     </tbody>
                 </table>
             </div>
+        </div>
+    );
+}
+
+// =====================================================
+// COVERAGE DATE VALIDATION (ELG-03)
+// =====================================================
+
+function CoverageDateValidation({ coverage, serviceDate }) {
+    const warnings = [];
+    const now = new Date();
+    const svcDate = serviceDate ? new Date(serviceDate) : now;
+
+    if (coverage.effectiveDate) {
+        const effDate = new Date(coverage.effectiveDate);
+        if (svcDate < effDate) {
+            warnings.push({ type: 'error', msg: `Coverage starts ${coverage.effectiveDate} — service date is BEFORE effective date` });
+        }
+    }
+    if (coverage.terminationDate) {
+        const termDate = new Date(coverage.terminationDate);
+        if (svcDate > termDate) {
+            warnings.push({ type: 'error', msg: `Coverage ended ${coverage.terminationDate} — service date is AFTER termination` });
+        } else {
+            const daysUntilTerm = Math.ceil((termDate - svcDate) / (1000 * 60 * 60 * 24));
+            if (daysUntilTerm <= 30) {
+                warnings.push({ type: 'warning', msg: `Coverage terminates in ${daysUntilTerm} days (${coverage.terminationDate})` });
+            }
+        }
+    }
+
+    if (warnings.length === 0) {
+        return (
+            <div style={{
+                padding: '8px 12px', borderRadius: '6px', marginBottom: '12px',
+                backgroundColor: '#d1fae5', border: '1px solid #86efac', fontSize: '12px', color: '#065f46',
+            }}>
+                ✅ Coverage dates valid for service date ({serviceDate || 'today'})
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ marginBottom: '12px' }}>
+            {warnings.map((w, i) => (
+                <div key={i} style={{
+                    padding: '8px 12px', borderRadius: '6px', marginBottom: '4px',
+                    backgroundColor: w.type === 'error' ? '#fee2e2' : '#fef3c7',
+                    border: `1px solid ${w.type === 'error' ? '#fca5a5' : '#fcd34d'}`,
+                    fontSize: '12px', color: w.type === 'error' ? '#991b1b' : '#92400e',
+                    fontWeight: '600',
+                }}>
+                    {w.type === 'error' ? '🚫' : '⚠️'} {w.msg}
+                </div>
+            ))}
         </div>
     );
 }

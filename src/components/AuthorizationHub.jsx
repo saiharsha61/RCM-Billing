@@ -1,12 +1,14 @@
 /**
  * Authorization Hub — Full PA Lifecycle Management
- * Spec v1.0: 6-tab interface covering the entire authorization workflow
- * Tab 1: Dashboard (KPIs, state distribution)
- * Tab 2: All Authorizations (filterable list with state badges)
+ * Spec v1.0+N3: 6-tab interface covering the entire authorization workflow
+ * Tab 1: Dashboard (KPIs, state distribution, SLA indicators)
+ * Tab 2: All Authorizations (filterable list with state badges + SLA timers)
  * Tab 3: New Request (smart form with auto-detection)
  * Tab 4: Submission Queue (batch submission, X12 278 preview)
  * Tab 5: Appeal Queue (denied auths, peer-to-peer scheduling)
  * Tab 6: Expiring (14-day alerts, renewal)
+ *
+ * PRD Coverage: PA-01→06, AFU-01→04, COM-01→04
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import {
@@ -20,6 +22,7 @@ import {
 import {
     submitToPayer, pollPayerStatus, generateX12_278Request, schedulePeerToPeer
 } from '../lib/authPayerGateway';
+import { useTenant } from '../lib/tenantContext.jsx';
 import mockData from '../lib/mockData';
 
 // =====================================================
@@ -88,12 +91,17 @@ const INITIAL_AUTHS = [
 // MAIN HUB COMPONENT
 // =====================================================
 export function AuthorizationHub() {
+    const { tenant, tenantId, getSLAThreshold, getEscalationChain } = useTenant();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [authorizations, setAuthorizations] = useState(INITIAL_AUTHS);
     const [auditLog, setAuditLog] = useState([]);
     const [selectedAuth, setSelectedAuth] = useState(null);
     const [showNewRequest, setShowNewRequest] = useState(false);
     const [notification, setNotification] = useState(null);
+    const [commLog, setCommLog] = useState([]);
+
+    const paSLA = getSLAThreshold('prior-auth');
+    const escalation = getEscalationChain();
 
     // --- Computed data ---
     const stats = useMemo(() => {
@@ -210,7 +218,7 @@ export function AuthorizationHub() {
                     Authorization Management Hub
                 </h1>
                 <p style={{ color: '#64748b', margin: 0 }}>
-                    Prior authorization lifecycle — create, submit, track, appeal
+                    {tenant?.name ? `${tenant.name} · ` : ''}Prior authorization lifecycle — create, submit, track, appeal
                 </p>
             </div>
 
@@ -247,8 +255,8 @@ export function AuthorizationHub() {
             </div>
 
             {/* Tab Content */}
-            {activeTab === 'dashboard' && <DashboardTab stats={stats} authorizations={authorizations} />}
-            {activeTab === 'all' && <AllAuthsTab authorizations={authorizations} onTransition={handleTransition} onSelect={setSelectedAuth} onPoll={handlePollStatus} />}
+            {activeTab === 'dashboard' && <DashboardTab stats={stats} authorizations={authorizations} paSLA={paSLA} escalation={escalation} />}
+            {activeTab === 'all' && <AllAuthsTab authorizations={authorizations} onTransition={handleTransition} onSelect={setSelectedAuth} onPoll={handlePollStatus} paSLA={paSLA} />}
             {activeTab === 'new' && <NewRequestTab onCreateAuth={handleCreateAuth} />}
             {activeTab === 'queue' && <SubmissionQueueTab authorizations={authorizations} onSubmit={handleSubmitToPayer} onTransition={handleTransition} />}
             {activeTab === 'appeals' && <AppealsTab authorizations={authorizations} onTransition={handleTransition} />}
@@ -263,7 +271,7 @@ export function AuthorizationHub() {
 // =====================================================
 // TAB 1: DASHBOARD
 // =====================================================
-function DashboardTab({ stats, authorizations }) {
+function DashboardTab({ stats, authorizations, paSLA, escalation }) {
     const kpis = [
         { label: 'Total Auths', value: stats.total, color: '#0004d0', icon: '📋' },
         { label: 'Approval Rate', value: `${stats.approvalRate}%`, color: '#16a34a', icon: '✅' },
@@ -273,8 +281,43 @@ function DashboardTab({ stats, authorizations }) {
         { label: 'Denied', value: stats.denied, color: '#dc2626', icon: '❌' }
     ];
 
+    // SLA color coding (AFU-01)
+    const slaColor = paSLA <= 24 ? '#ef4444' : paSLA <= 48 ? '#f59e0b' : '#10b981';
+
     return (
         <div>
+            {/* SLA + Escalation Status Bar (AFU-01→04) */}
+            <div style={{
+                display: 'flex', gap: '12px', marginBottom: '20px',
+            }}>
+                <div style={{
+                    flex: 1, padding: '12px 16px', borderRadius: '8px',
+                    backgroundColor: `${slaColor}10`, border: `1px solid ${slaColor}30`,
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                }}>
+                    <span style={{ fontSize: '18px' }}>⏱</span>
+                    <div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>PA SLA Threshold</div>
+                        <div style={{ fontSize: '16px', fontWeight: '800', color: slaColor }}>{paSLA}h turnaround</div>
+                    </div>
+                </div>
+                <div style={{
+                    flex: 1, padding: '12px 16px', borderRadius: '8px',
+                    backgroundColor: '#fef3c720', border: '1px solid #fde68a',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                }}>
+                    <span style={{ fontSize: '18px' }}>🔔</span>
+                    <div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase' }}>Escalation Chain (AFU-03)</div>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#92400e' }}>
+                            {escalation.map((e, i) => (
+                                <span key={i}>{i > 0 ? ' → ' : ''}{e.role} ({e.threshold})</span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* KPI Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                 {kpis.map(kpi => (
@@ -319,7 +362,7 @@ function DashboardTab({ stats, authorizations }) {
 // =====================================================
 // TAB 2: ALL AUTHORIZATIONS
 // =====================================================
-function AllAuthsTab({ authorizations, onTransition, onSelect, onPoll }) {
+function AllAuthsTab({ authorizations, onTransition, onSelect, onPoll, paSLA }) {
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('ALL');
 
@@ -355,7 +398,7 @@ function AllAuthsTab({ authorizations, onTransition, onSelect, onPoll }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                     <thead>
                         <tr style={{ backgroundColor: '#f8fafc' }}>
-                            {['Patient', 'Payer', 'CPT Codes', 'Status', 'Units', 'Auth #', 'Dates', 'Actions'].map(h => (
+                            {['Patient', 'Payer', 'CPT Codes', 'Status', 'SLA', 'Units', 'Auth #', 'Actions'].map(h => (
                                 <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#374151', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
                             ))}
                         </tr>
@@ -380,14 +423,14 @@ function AllAuthsTab({ authorizations, onTransition, onSelect, onPoll }) {
                                             {cfg.icon} {cfg.label}
                                         </span>
                                     </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        <SLATimerBadge auth={auth} slaHours={paSLA} />
+                                    </td>
                                     <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>
                                         {auth.units_approved != null ? `${auth.units_approved}/${auth.units_requested}` : auth.units_requested}
                                     </td>
                                     <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '12px' }}>
                                         {auth.auth_number || '—'}
-                                    </td>
-                                    <td style={{ padding: '12px 16px', fontSize: '12px', color: '#64748b' }}>
-                                        {auth.effective_date}{auth.expiry_date ? ` → ${auth.expiry_date}` : ''}
                                     </td>
                                     <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
                                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
@@ -890,6 +933,42 @@ function AuthDetailModal({ auth, auditLog, onClose, onTransition }) {
                 </div>
             </div>
         </div>
+    );
+}
+
+// =====================================================
+// SLA TIMER BADGE (AFU-01→04)
+// Shows elapsed time vs SLA threshold for pending auths
+// =====================================================
+function SLATimerBadge({ auth, slaHours }) {
+    if (!['PENDING', 'SUBMITTED'].includes(auth.status)) {
+        return <span style={{ fontSize: '11px', color: '#94a3b8' }}>—</span>;
+    }
+
+    const submittedAt = auth.submitted_at ? new Date(auth.submitted_at) : new Date(auth.created_at);
+    const now = new Date();
+    const elapsedMs = now - submittedAt;
+    const elapsedHours = Math.round(elapsedMs / (1000 * 60 * 60));
+    const remainingHours = slaHours - elapsedHours;
+    const pctUsed = Math.min((elapsedHours / slaHours) * 100, 100);
+
+    let color, bg, label;
+    if (remainingHours <= 0) {
+        color = '#991b1b'; bg = '#fee2e2'; label = `🚨 SLA BREACHED (${Math.abs(remainingHours)}h over)`;
+    } else if (pctUsed >= 75) {
+        color = '#92400e'; bg = '#fef3c7'; label = `⚠️ ${remainingHours}h left`;
+    } else {
+        color = '#065f46'; bg = '#d1fae5'; label = `✅ ${remainingHours}h left`;
+    }
+
+    return (
+        <span style={{
+            display: 'inline-block', padding: '3px 8px', borderRadius: '6px',
+            fontSize: '10px', fontWeight: '700', backgroundColor: bg, color,
+            whiteSpace: 'nowrap',
+        }}>
+            {label}
+        </span>
     );
 }
 
