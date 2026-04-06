@@ -1,4 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import mockData from '../lib/mockData';
+import {
+    calculateDenialRisk,
+    getDenialRiskCategory,
+    calculatePropensityToPay,
+    getPropensityCategory
+} from '../lib/aiScoringEngine';
 
 /**
  * REPORTS DASHBOARD
@@ -6,8 +13,13 @@ import React, { useState } from 'react';
  */
 
 export function ReportsDashboard() {
-    const [dateRange, setDateRange] = useState('mtd'); // mtd, ytd, custom
+    const [dateRange, setDateRange] = useState('mtd'); // 7d, 30d, 90d, mtd, ytd
     const [selectedReport, setSelectedReport] = useState('overview');
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'ai-insights'
+    const [roleView, setRoleView] = useState('admin'); // admin | frontdesk | billing | coding | provider | authorizations
+
+    // Scale factor for date range (applied to trend/volume metrics for display)
+    const rangeScale = { '7d': 0.23, '30d': 1, '90d': 3, 'mtd': 1, 'ytd': 12 }[dateRange] || 1;
 
     // Mock analytics data
     const metrics = {
@@ -50,6 +62,31 @@ export function ReportsDashboard() {
         { provider: 'Dr. Davis', charges: 118450, collected: 120130, rate: 101.4, rank: 5 }
     ];
 
+    // --- CSV Export ---
+    const handleExportCSV = () => {
+        const rows = [
+            ['Metric', 'Value', 'Trend'],
+            ['Clean Claim Rate', `${metrics.cleanClaimRate}%`, `${metrics.cleanClaimTrend}%`],
+            ['Days in A/R', metrics.daysInAR, `${metrics.daysInARTrend}%`],
+            ['Denial Rate', `${metrics.denialRate}%`, `${metrics.denialRateTrend}%`],
+            ['Collection Rate', `${metrics.collectionRate}%`, `${metrics.collectionTrend}%`],
+            ['', '', ''],
+            ['Denial Category', 'Count', 'Amount'],
+            ...denialsByCategory.map(d => [d.category, d.count, `$${d.amount}`]),
+            ['', '', ''],
+            ['Provider', 'Charges', 'Collection Rate'],
+            ...providerPerformance.map(p => [p.provider, `$${p.charges}`, `${p.rate}%`])
+        ];
+        const csv = rows.map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rcm-report-${dateRange}-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div style={{ padding: '24px' }}>
             {/* Header */}
@@ -60,13 +97,32 @@ export function ReportsDashboard() {
                     </h1>
                     <p style={{ color: '#64748b', margin: 0 }}>Revenue Cycle Performance Metrics</p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    {['mtd', 'ytd', 'custom'].map(range => (
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Role view selector */}
+                    {[
+                        { id: 'admin', label: '🏢 Admin', color: '#0004d0' },
+                        { id: 'frontdesk', label: '🏥 Front Desk', color: '#0891b2' },
+                        { id: 'billing', label: '💰 Billing', color: '#16a34a' },
+                        { id: 'coding', label: '💻 Coding', color: '#7c3aed' },
+                        { id: 'provider', label: '👨‍⚕️ Provider', color: '#d97706' },
+                        { id: 'authorizations', label: '🔐 Auth Team', color: '#dc2626' },
+                    ].map(role => (
+                        <button key={role.id} onClick={() => setRoleView(role.id)} style={{
+                            padding: '6px 12px', border: `2px solid ${roleView === role.id ? role.color : '#e2e8f0'}`,
+                            borderRadius: '20px', fontSize: '11px', fontWeight: '700', cursor: 'pointer',
+                            backgroundColor: roleView === role.id ? role.color : 'white',
+                            color: roleView === role.id ? 'white' : '#64748b',
+                            transition: 'all 0.2s',
+                        }}>{role.label}</button>
+                    ))}
+                    <div style={{ width: '1px', height: '28px', backgroundColor: '#e2e8f0', margin: '0 4px' }} />
+
+                    {['7d', '30d', '90d', 'mtd', 'ytd'].map(range => (
                         <button
                             key={range}
                             onClick={() => setDateRange(range)}
                             style={{
-                                padding: '10px 20px',
+                                padding: '8px 14px',
                                 backgroundColor: dateRange === range ? '#a941c6' : 'white',
                                 color: dateRange === range ? 'white' : '#64748b',
                                 border: `2px solid ${dateRange === range ? '#a941c6' : '#e2e8f0'}`,
@@ -74,15 +130,63 @@ export function ReportsDashboard() {
                                 fontWeight: '600',
                                 cursor: 'pointer',
                                 textTransform: 'uppercase',
-                                fontSize: '12px'
+                                fontSize: '11px'
                             }}
                         >
-                            {range === 'mtd' ? 'Month to Date' : range === 'ytd' ? 'Year to Date' : 'Custom'}
+                            {range === 'mtd' ? 'MTD' : range === 'ytd' ? 'YTD' : range}
                         </button>
                     ))}
+                    <div style={{ width: '1px', height: '28px', backgroundColor: '#e2e8f0', margin: '0 4px' }} />
+                    <button
+                        onClick={handleExportCSV}
+                        style={{
+                            padding: '8px 14px', backgroundColor: 'white', color: '#0004d0',
+                            border: '2px solid #0004d0', borderRadius: '8px',
+                            fontWeight: '600', cursor: 'pointer', fontSize: '11px'
+                        }}
+                    >⬇ CSV</button>
+                    <button
+                        onClick={() => window.print()}
+                        style={{
+                            padding: '8px 14px', backgroundColor: 'white', color: '#475569',
+                            border: '2px solid #e2e8f0', borderRadius: '8px',
+                            fontWeight: '600', cursor: 'pointer', fontSize: '11px'
+                        }}
+                    >🖨️ Print</button>
                 </div>
             </div>
 
+            {/* Tab Switcher */}
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', backgroundColor: '#f1f5f9', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
+                {[
+                    { id: 'overview', label: '📊 Overview' },
+                    { id: 'ai-insights', label: '🤖 AI Insights' }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        style={{
+                            padding: '10px 24px',
+                            backgroundColor: activeTab === tab.id ? 'white' : 'transparent',
+                            color: activeTab === tab.id ? '#a941c6' : '#64748b',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            boxShadow: activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+                            transition: 'all 0.2s'
+                        }}
+                    >{tab.label}</button>
+                ))}
+            </div>
+
+            {activeTab === 'ai-insights' && <AIInsightsTab dateRange={dateRange} rangeScale={rangeScale} metrics={metrics} denialsByCategory={denialsByCategory} />}
+
+            {/* Role-based view — replaces overview when non-admin role is selected */}
+            {roleView !== 'admin' && activeTab === 'overview' && <RoleDashboard role={roleView} metrics={metrics} denialsByCategory={denialsByCategory} />}
+
+            {activeTab === 'overview' && roleView === 'admin' && <>
             {/* KPI Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '24px' }}>
                 <KPICard
@@ -279,6 +383,7 @@ export function ReportsDashboard() {
                     </tbody>
                 </table>
             </div>
+            </>}
         </div>
     );
 }
@@ -305,6 +410,232 @@ function KPICard({ title, value, trend, icon, color, trendInverse = false }) {
             </div>
             <div style={{ fontSize: '13px', color: trendColor, fontWeight: '600' }}>
                 {trendPrefix}{trend}% vs last period
+            </div>
+        </div>
+    );
+}
+
+// =====================================================
+// AI INSIGHTS TAB
+// =====================================================
+
+function AIInsightsTab({ dateRange, rangeScale, metrics, denialsByCategory }) {
+    const { claims, patients, serviceAuthorizations } = mockData;
+
+    // Build denial risk rows from existing claims + patients
+    const denialRiskRows = useMemo(() => {
+        return claims.map(claim => {
+            const patient = patients.find(p => p.PatientID === claim.PatientID);
+            const mappedClaim = {
+                requires_authorization: !!claim.AuthorizationNo,
+                authorization_number: claim.AuthorizationNo,
+                rendering_provider_npi: claim.RenderingProviderID ? 'set' : null,
+                place_of_service: '11',
+                diagnosis_codes: [],
+                service_date: claim.ServiceDateFrom,
+                date_of_service: claim.ServiceDateFrom
+            };
+            const riskScore = calculateDenialRisk(mappedClaim, {}, patient || {});
+            const category = getDenialRiskCategory(riskScore);
+            return {
+                claimNo: claim.ClaimNumber,
+                patientName: patient ? `${patient.FirstName} ${patient.LastName}` : 'Unknown',
+                amount: claim.TotalCharges,
+                status: claim.ClaimStatus,
+                riskScore,
+                category
+            };
+        });
+    }, [claims, patients]);
+
+    // Auth approval probability from serviceAuthorizations
+    const authRows = useMemo(() => {
+        return serviceAuthorizations.map(auth => {
+            const prob = auth.status === 'Approved' ? 92
+                : auth.status === 'Pending' ? 61
+                : auth.status === 'Denied' ? 8 : 45;
+            return { ...auth, probability: prob };
+        });
+    }, [serviceAuthorizations]);
+
+    // Revenue at risk — reuse denialsByCategory amounts
+    const totalAtRisk = denialsByCategory.reduce((s, d) => s + d.amount, 0);
+
+    // Sparkline data — 7 weeks simulated from metrics
+    const sparkData = {
+        cleanClaim: [91.2, 92.0, 91.8, 93.1, 93.4, 94.0, metrics.cleanClaimRate],
+        denialRate: [10.1, 9.8, 9.5, 9.1, 8.8, 8.4, metrics.denialRate],
+        firstPass: [88.0, 88.5, 89.2, 89.8, 90.1, 90.5, 91.0]
+    };
+
+    const probColor = p => p >= 80 ? '#10b981' : p >= 50 ? '#f59e0b' : '#ef4444';
+    const probLabel = p => p >= 80 ? 'High' : p >= 50 ? 'Medium' : 'Low';
+
+    return (
+        <div style={{ display: 'grid', gap: '24px' }}>
+
+            {/* Row 1: Denial Risk Scoreboard + Auth Probability */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+
+                {/* Denial Risk Scoreboard */}
+                <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', color: '#0f172a' }}>🚨 Denial Risk Scoreboard</h2>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                        <thead>
+                            <tr style={{ backgroundColor: '#f7f9ff', borderBottom: '2px solid #e3f2fd' }}>
+                                <th style={{ padding: '10px 8px', textAlign: 'left', color: '#0004d0' }}>Claim</th>
+                                <th style={{ padding: '10px 8px', textAlign: 'left', color: '#0004d0' }}>Patient</th>
+                                <th style={{ padding: '10px 8px', textAlign: 'right', color: '#0004d0' }}>Amount</th>
+                                <th style={{ padding: '10px 8px', textAlign: 'center', color: '#0004d0' }}>Risk</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {denialRiskRows.map((row, i) => (
+                                <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                    <td style={{ padding: '10px 8px', fontWeight: '600', color: '#6366f1' }}>{row.claimNo}</td>
+                                    <td style={{ padding: '10px 8px' }}>{row.patientName}</td>
+                                    <td style={{ padding: '10px 8px', textAlign: 'right' }}>${row.amount?.toLocaleString()}</td>
+                                    <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                                        <span style={{
+                                            padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '700',
+                                            backgroundColor: row.category.color + '20',
+                                            color: row.category.color
+                                        }}>
+                                            {row.category.icon} {row.category.label}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Auth Approval Probability */}
+                <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', color: '#0f172a' }}>✅ Auth Approval Probability</h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {authRows.map((auth, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+                                <div>
+                                    <div style={{ fontWeight: '600', fontSize: '13px' }}>{auth.procedure_description}</div>
+                                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{auth.payer} · {auth.authorization_no}</div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ fontSize: '13px', color: '#64748b' }}>{auth.probability}%</div>
+                                    <span style={{
+                                        padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '700',
+                                        backgroundColor: probColor(auth.probability) + '20',
+                                        color: probColor(auth.probability)
+                                    }}>
+                                        {probLabel(auth.probability)}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Row 2: Revenue at Risk Donut + First-Pass Auth Rate Trend */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+
+                {/* Revenue at Risk — SVG Donut */}
+                <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', color: '#0f172a' }}>💸 Revenue at Risk</h2>
+                    <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                        <DonutChart segments={denialsByCategory.map((d, i) => ({
+                            value: d.amount,
+                            color: ['#ef4444','#f59e0b','#3b82f6','#8b5cf6','#6b7280'][i],
+                            label: d.category
+                        }))} total={totalAtRisk} />
+                        <div style={{ flex: 1 }}>
+                            {denialsByCategory.map((d, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0,
+                                        backgroundColor: ['#ef4444','#f59e0b','#3b82f6','#8b5cf6','#6b7280'][i] }} />
+                                    <span style={{ fontSize: '12px', flex: 1 }}>{d.category}</span>
+                                    <span style={{ fontSize: '12px', fontWeight: '700' }}>${(d.amount/1000).toFixed(0)}K</span>
+                                </div>
+                            ))}
+                            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', fontSize: '13px', fontWeight: '700', color: '#ef4444' }}>
+                                Total at Risk: ${(totalAtRisk/1000).toFixed(0)}K
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* First-Pass Auth Rate Trend + Sparklines */}
+                <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', color: '#0f172a' }}>📈 Key Trend Sparklines</h2>
+                    <SparklineCard label="Clean Claim Rate" data={sparkData.cleanClaim} color="#10b981" suffix="%" />
+                    <SparklineCard label="Denial Rate" data={sparkData.denialRate} color="#ef4444" suffix="%" />
+                    <SparklineCard label="First-Pass Auth Rate" data={sparkData.firstPass} color="#a941c6" suffix="%" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// SVG Donut chart (no external dependency)
+function DonutChart({ segments, total }) {
+    const size = 120, r = 44, cx = 60, cy = 60;
+    const circumference = 2 * Math.PI * r;
+    const totalVal = segments.reduce((s, seg) => s + seg.value, 0);
+    let offset = 0;
+    return (
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+            <svg width={size} height={size}>
+                <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f1f5f9" strokeWidth="20" />
+                {segments.map((seg, i) => {
+                    const pct = seg.value / totalVal;
+                    const dash = pct * circumference;
+                    const elem = (
+                        <circle key={i} cx={cx} cy={cy} r={r} fill="none"
+                            stroke={seg.color} strokeWidth="20"
+                            strokeDasharray={`${dash} ${circumference - dash}`}
+                            strokeDashoffset={-offset * circumference + circumference * 0.25}
+                            style={{ transition: 'stroke-dasharray 0.4s' }}
+                        />
+                    );
+                    offset += pct;
+                    return elem;
+                })}
+            </svg>
+            <div style={{
+                position: 'absolute', top: '50%', left: '50%',
+                transform: 'translate(-50%,-50%)', textAlign: 'center'
+            }}>
+                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>TOTAL</div>
+                <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>${(total/1000).toFixed(0)}K</div>
+            </div>
+        </div>
+    );
+}
+
+// Inline SVG sparkline
+function SparklineCard({ label, data, color, suffix }) {
+    const min = Math.min(...data), max = Math.max(...data);
+    const w = 120, h = 36;
+    const pts = data.map((v, i) => {
+        const x = (i / (data.length - 1)) * w;
+        const y = h - ((v - min) / (max - min || 1)) * h;
+        return `${x},${y}`;
+    }).join(' ');
+    const last = data[data.length - 1];
+    const prev = data[data.length - 2];
+    const delta = (last - prev).toFixed(1);
+    const up = last >= prev;
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', padding: '10px 12px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a', minWidth: '150px' }}>{label}</div>
+            <svg width={w} height={h}>
+                <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
+            </svg>
+            <div style={{ textAlign: 'right', minWidth: '70px' }}>
+                <div style={{ fontSize: '15px', fontWeight: '800' }}>{last}{suffix}</div>
+                <div style={{ fontSize: '11px', color: up ? '#10b981' : '#ef4444', fontWeight: '600' }}>
+                    {up ? '↑' : '↓'} {Math.abs(delta)}{suffix}
+                </div>
             </div>
         </div>
     );
@@ -631,6 +962,145 @@ function SettingToggle({ label, value, onChange }) {
                     boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
                 }} />
             </button>
+        </div>
+    );
+}
+
+// =====================================================
+// ROLE-BASED DASHBOARD VIEW
+// Renders role-specific KPIs when a non-admin role is selected
+// =====================================================
+function RoleDashboard({ role, metrics, denialsByCategory }) {
+    const ROLE_CONFIGS = {
+        frontdesk: {
+            label: '🏥 Front Desk Dashboard',
+            color: '#0891b2',
+            bg: '#ecfeff',
+            kpis: [
+                { icon: '❌', label: 'Failed Eligibility Today', value: '7', trend: null, sub: 'Need insurance update' },
+                { icon: '📅', label: 'Scheduled Today', value: '34', trend: '+3', trendUp: true, sub: 'vs yesterday' },
+                { icon: '✅', label: 'Checked In', value: '21', trend: null, sub: 'of 34 scheduled' },
+                { icon: '⏰', label: 'Avg Wait Time', value: '12 min', trend: '-4 min', trendUp: true, sub: 'under target' },
+                { icon: '🔄', label: 'Re-Verifications Due', value: '5', trend: null, sub: 'Expiring in 7 days' },
+                { icon: '📋', label: 'Copay Collected', value: '$840', trend: '+$120', trendUp: true, sub: 'Today' },
+            ],
+            alerts: [
+                { type: 'error', msg: '3 patients have inactive coverage — update insurance before appointment' },
+                { type: 'warn', msg: '5 eligibilities expire this week — verify before visit' },
+            ],
+        },
+        billing: {
+            label: '💰 Billing Dashboard',
+            color: '#16a34a',
+            bg: '#f0fdf4',
+            kpis: [
+                { icon: '📤', label: 'Claims Submitted', value: '142', trend: '+18', trendUp: true, sub: 'This week' },
+                { icon: '💵', label: 'Payments Posted', value: '$48,200', trend: '+$6,800', trendUp: true, sub: 'This week' },
+                { icon: `${metrics.daysInAR}d`, label: 'Days in A/R', value: '', trend: `${metrics.daysInARTrend}`, trendUp: metrics.daysInARTrend < 0, sub: 'vs last period' },
+                { icon: '🔴', label: 'A/R > 90 Days', value: '$23,450', trend: '-$2,100', trendUp: true, sub: 'Decreasing ✓' },
+                { icon: '💔', label: 'Denial Rate', value: `${metrics.denialRate}%`, trend: `${metrics.denialRateTrend}%`, trendUp: metrics.denialRateTrend < 0, sub: 'vs benchmark 10%' },
+                { icon: '📈', label: 'Collection Rate', value: `${metrics.collectionRate}%`, trend: `+${metrics.collectionTrend}%`, trendUp: true, sub: 'Excellent' },
+            ],
+            alerts: [
+                { type: 'warn', msg: `${denialsByCategory.find(d => d.category === 'Eligibility')?.count || 0} eligibility denials pending — highest volume category` },
+                { type: 'info', msg: '18 claims approaching timely filing deadline (90 days)' },
+            ],
+        },
+        coding: {
+            label: '💻 Coding Dashboard',
+            color: '#7c3aed',
+            bg: '#faf5ff',
+            kpis: [
+                { icon: '📝', label: 'Unbilled Encounters', value: '28', trend: '-5', trendUp: true, sub: 'vs yesterday' },
+                { icon: '❌', label: 'Coding Denials', value: `${denialsByCategory.find(d => d.category === 'Coding')?.count || 32}`, trend: null, sub: 'This period' },
+                { icon: '🔍', label: 'Queries Pending', value: '9', trend: '+2', trendUp: false, sub: 'Provider queries' },
+                { icon: '✅', label: 'Clean Claim Rate', value: `${metrics.cleanClaimRate}%`, trend: `+${metrics.cleanClaimTrend}%`, trendUp: true, sub: 'Industry avg 95%' },
+                { icon: '⚡', label: 'Avg Coding Time', value: '6.2 min', trend: '-0.8 min', trendUp: true, sub: 'Per encounter' },
+                { icon: '📊', label: 'Encounters Coded Today', value: '47', trend: null, sub: 'Daily productivity' },
+            ],
+            alerts: [
+                { type: 'warn', msg: '9 provider queries require response before billing' },
+                { type: 'info', msg: '4 high-complexity encounters need secondary review (CC/MCC)' },
+            ],
+        },
+        provider: {
+            label: '👨‍⚕️ Provider Dashboard',
+            color: '#d97706',
+            bg: '#fffbeb',
+            kpis: [
+                { icon: '🚨', label: 'Med Necessity Denials', value: `${denialsByCategory.find(d => d.category === 'Medical Necessity')?.count || 25}`, trend: null, sub: 'Require clinical docs' },
+                { icon: '⏳', label: 'PA Decisions Pending', value: '12', trend: null, sub: 'Awaiting payer response' },
+                { icon: '📞', label: 'P2P Reviews Scheduled', value: '3', trend: null, sub: 'This week' },
+                { icon: '📋', label: 'Unsigned Notes', value: '6', trend: '-2', trendUp: true, sub: '> 24hrs old' },
+                { icon: '💰', label: 'Revenue at Risk', value: `$${denialsByCategory.find(d => d.category === 'Medical Necessity')?.amount?.toLocaleString() || '41,200'}`, trend: null, sub: 'Med necessity denials' },
+                { icon: '✅', label: 'Auth Approval Rate', value: '82%', trend: '+5%', trendUp: true, sub: 'Last 30 days' },
+            ],
+            alerts: [
+                { type: 'error', msg: '3 peer-to-peer reviews deadline within 48 hours — action required' },
+                { type: 'warn', msg: '6 unsigned encounter notes blocking billing' },
+            ],
+        },
+        authorizations: {
+            label: '🔐 Authorizations Dashboard',
+            color: '#dc2626',
+            bg: '#fff5f5',
+            kpis: [
+                { icon: '⏰', label: 'Expiring Auths (14d)', value: '2', trend: null, sub: 'Renewal required' },
+                { icon: '⏳', label: 'Pending PA Decisions', value: '3', trend: null, sub: 'Awaiting payer' },
+                { icon: '🚨', label: 'SLA Breached', value: '1', trend: null, sub: '> 72h unanswered' },
+                { icon: '✅', label: 'Approval Rate', value: '80%', trend: '+5%', trendUp: true, sub: 'This period' },
+                { icon: '🔄', label: 'Active Appeals', value: '0', trend: null, sub: 'Filed appeals' },
+                { icon: '📋', label: 'Auth Denials', value: `${denialsByCategory.find(d => d.category === 'Authorization')?.count || 38}`, trend: null, sub: 'This period' },
+            ],
+            alerts: [
+                { type: 'error', msg: '1 authorization SLA breached — escalate to supervisor immediately' },
+                { type: 'warn', msg: '2 authorizations expiring within 14 days — renew now' },
+            ],
+        },
+    };
+
+    const config = ROLE_CONFIGS[role];
+    if (!config) return null;
+
+    const alertColors = {
+        error: { bg: '#fee2e2', color: '#991b1b', icon: '🔴' },
+        warn: { bg: '#fef3c7', color: '#92400e', icon: '⚠️' },
+        info: { bg: '#dbeafe', color: '#1e40af', icon: 'ℹ️' },
+    };
+
+    return (
+        <div style={{ backgroundColor: config.bg, borderRadius: '16px', padding: '24px', border: `1px solid ${config.color}20`, marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: '800', color: config.color, margin: 0 }}>{config.label}</h2>
+                <span style={{ fontSize: '12px', color: '#64748b', backgroundColor: 'white', padding: '4px 12px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>Role View — Admin data visible to all</span>
+            </div>
+
+            {/* Alerts */}
+            {config.alerts.map((alert, i) => {
+                const ac = alertColors[alert.type];
+                return (
+                    <div key={i} style={{ backgroundColor: ac.bg, color: ac.color, padding: '10px 16px', borderRadius: '8px', marginBottom: '12px', fontSize: '13px', fontWeight: '600' }}>
+                        {ac.icon} {alert.msg}
+                    </div>
+                );
+            })}
+
+            {/* KPI Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
+                {config.kpis.map((kpi, i) => (
+                    <div key={i} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '18px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                        <div style={{ fontSize: '22px', marginBottom: '6px' }}>{kpi.icon}</div>
+                        <div style={{ fontSize: kpi.value ? '24px' : '20px', fontWeight: '800', color: config.color }}>{kpi.value || ''}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginTop: '2px' }}>{kpi.label}</div>
+                        {kpi.trend && (
+                            <div style={{ fontSize: '12px', color: kpi.trendUp ? '#16a34a' : '#dc2626', marginTop: '4px', fontWeight: '600' }}>
+                                {kpi.trendUp ? '▲' : '▼'} {kpi.trend}
+                            </div>
+                        )}
+                        <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{kpi.sub}</div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

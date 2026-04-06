@@ -311,150 +311,153 @@ export function TaskWorklist({ type, onClose }) {
 }
 
 function TaskRow({ task, type, isEven }) {
+    const [showAction, setShowAction] = useState(false);
+    const [actionDone, setActionDone] = useState(false);
+
+    const [insForm, setInsForm] = useState({
+        insuranceName: task.insurance || '', planType: 'PPO',
+        memberId: '', groupNo: '', effectiveDate: new Date().toISOString().slice(0, 10),
+    });
+    const [renewForm, setRenewForm] = useState({ newAuthNo: '', newExpiry: '', newVisits: '', notes: '' });
+    const [referralStatus, setReferralStatus] = useState('Received');
+    const [denialAction, setDenialAction] = useState('appeal');
+    const [denialNotes, setDenialNotes] = useState('');
+
+    const handleSave = () => { setActionDone(true); setShowAction(false); };
+
+    const inputSm = { width: '100%', padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', boxSizing: 'border-box' };
+    const labelSm = { display: 'block', fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '3px' };
+    const saveBtnStyle = { padding: '7px 16px', backgroundColor: '#a941c6', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' };
+    const cancelBtnStyle = { padding: '7px 14px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' };
+
+    const actionBtn = (label) => (
+        actionDone
+            ? <span style={{ color: '#10b981', fontWeight: '700', fontSize: '12px' }}>✓ Done</span>
+            : <button onClick={() => setShowAction(v => !v)} style={{ ...saveBtnStyle, backgroundColor: showAction ? '#475569' : '#a941c6' }}>{showAction ? 'Cancel' : label}</button>
+    );
+
     const renderRow = () => {
         switch (type) {
             case 'eligibility':
-                return (
-                    <>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.patient}</td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.dob}</td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.insurance}</td>
-                        <td style={{ padding: '12px' }}>
-                            <span style={{
-                                padding: '4px 12px',
-                                backgroundColor: '#fee2e2',
-                                color: '#991b1b',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: '600'
-                            }}>
-                                {task.status}
-                            </span>
-                        </td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.date}</td>
-                        <td style={{ padding: '12px', fontSize: '14px', color: '#64748b' }}>{task.reason}</td>
-                        <td style={{ padding: '12px' }}>
-                            <button style={{
-                                padding: '6px 12px',
-                                backgroundColor: '#a941c6',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                cursor: 'pointer'
-                            }}>
-                                Update Insurance
-                            </button>
-                        </td>
-                    </>
-                );
+                return (<>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.patient}</td>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.dob}</td>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.insurance}</td>
+                    <td style={{ padding: '12px' }}><span style={{ padding: '4px 12px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>{task.status}</span></td>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.date}</td>
+                    <td style={{ padding: '12px', fontSize: '14px', color: '#64748b' }}>{task.reason}</td>
+                    <td style={{ padding: '12px' }}>{actionBtn('Update Insurance')}</td>
+                </>);
             case 'authorizations':
-                return (
-                    <>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.patient}</td>
-                        <td style={{ padding: '12px', fontSize: '14px', fontFamily: 'monospace' }}>{task.auth}</td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.expiry}</td>
-                        <td style={{ padding: '12px' }}>
-                            <span style={{
-                                padding: '4px 12px',
-                                backgroundColor: task.visits_remaining === 0 ? '#fee2e2' : '#fef3c7',
-                                color: task.visits_remaining === 0 ? '#991b1b' : '#92400e',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: '600'
-                            }}>
-                                {task.visits_remaining} visits
-                            </span>
-                        </td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.specialty}</td>
-                        <td style={{ padding: '12px' }}>
-                            <button style={{
-                                padding: '6px 12px',
-                                backgroundColor: '#a941c6',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                cursor: 'pointer'
-                            }}>
-                                Renew Auth
-                            </button>
-                        </td>
-                    </>
-                );
+                return (<>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.patient}</td>
+                    <td style={{ padding: '12px', fontSize: '14px', fontFamily: 'monospace' }}>{task.auth}</td>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.expiry}</td>
+                    <td style={{ padding: '12px' }}><span style={{ padding: '4px 12px', backgroundColor: task.visits_remaining === 0 ? '#fee2e2' : '#fef3c7', color: task.visits_remaining === 0 ? '#991b1b' : '#92400e', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>{task.visits_remaining} visits</span></td>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.specialty}</td>
+                    <td style={{ padding: '12px' }}>{actionBtn('Renew Auth')}</td>
+                </>);
             case 'referrals':
-                return (
-                    <>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.patient}</td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.specialty}</td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.provider}</td>
-                        <td style={{ padding: '12px' }}>
-                            <span style={{
-                                padding: '4px 12px',
-                                backgroundColor: task.days_pending > 45 ? '#fee2e2' : '#fef3c7',
-                                color: task.days_pending > 45 ? '#991b1b' : '#92400e',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: '600'
-                            }}>
-                                {task.days_pending} days
-                            </span>
-                        </td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.status}</td>
-                        <td style={{ padding: '12px' }}>
-                            <button style={{
-                                padding: '6px 12px',
-                                backgroundColor: '#a941c6',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                cursor: 'pointer'
-                            }}>
-                                View Referral
-                            </button>
-                        </td>
-                    </>
-                );
+                return (<>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.patient}</td>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.specialty}</td>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.provider}</td>
+                    <td style={{ padding: '12px' }}><span style={{ padding: '4px 12px', backgroundColor: task.days_pending > 45 ? '#fee2e2' : '#fef3c7', color: task.days_pending > 45 ? '#991b1b' : '#92400e', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>{task.days_pending} days</span></td>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{actionDone ? referralStatus : task.status}</td>
+                    <td style={{ padding: '12px' }}>{actionBtn('View Referral')}</td>
+                </>);
             case 'denials':
-                return (
-                    <>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.patient}</td>
-                        <td style={{ padding: '12px', fontSize: '14px', fontFamily: 'monospace' }}>{task.claim}</td>
-                        <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600' }}>{task.amount}</td>
-                        <td style={{ padding: '12px', fontSize: '14px', fontFamily: 'monospace', color: '#dc2626' }}>{task.carc}</td>
-                        <td style={{ padding: '12px', fontSize: '14px', color: '#64748b' }}>{task.reason}</td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>{task.payer}</td>
-                        <td style={{ padding: '12px' }}>
-                            <button style={{
-                                padding: '6px 12px',
-                                backgroundColor: '#a941c6',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                cursor: 'pointer'
-                            }}>
-                                Work Denial
-                            </button>
-                        </td>
-                    </>
-                );
+                return (<>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.patient}</td>
+                    <td style={{ padding: '12px', fontSize: '14px', fontFamily: 'monospace' }}>{task.claim}</td>
+                    <td style={{ padding: '12px', fontSize: '14px', fontWeight: '600' }}>{task.amount}</td>
+                    <td style={{ padding: '12px', fontSize: '14px', fontFamily: 'monospace', color: '#dc2626' }}>{task.carc}</td>
+                    <td style={{ padding: '12px', fontSize: '14px', color: '#64748b' }}>{task.reason}</td>
+                    <td style={{ padding: '12px', fontSize: '14px' }}>{task.payer}</td>
+                    <td style={{ padding: '12px' }}>{actionBtn('Work Denial')}</td>
+                </>);
             default:
                 return null;
         }
     };
 
+    const renderActionPanel = () => {
+        if (!showAction) return null;
+        const cols = { eligibility: 7, authorizations: 6, referrals: 6, denials: 7 }[type] || 6;
+        let content = null;
+
+        if (type === 'eligibility') content = (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', alignItems: 'end' }}>
+                <div><label style={labelSm}>Insurance Name</label><input style={inputSm} value={insForm.insuranceName} onChange={e => setInsForm(f => ({ ...f, insuranceName: e.target.value }))} /></div>
+                <div><label style={labelSm}>Plan Type</label>
+                    <select style={inputSm} value={insForm.planType} onChange={e => setInsForm(f => ({ ...f, planType: e.target.value }))}>
+                        <option>PPO</option><option>HMO</option><option>EPO</option><option>Medicare</option><option>Medicaid</option>
+                    </select>
+                </div>
+                <div><label style={labelSm}>Member / Subscriber ID</label><input style={inputSm} value={insForm.memberId} placeholder="e.g. XYZ123456" onChange={e => setInsForm(f => ({ ...f, memberId: e.target.value }))} /></div>
+                <div><label style={labelSm}>Group #</label><input style={inputSm} value={insForm.groupNo} placeholder="e.g. GRP001" onChange={e => setInsForm(f => ({ ...f, groupNo: e.target.value }))} /></div>
+                <div><label style={labelSm}>Effective Date</label><input type="date" style={inputSm} value={insForm.effectiveDate} onChange={e => setInsForm(f => ({ ...f, effectiveDate: e.target.value }))} /></div>
+                <div style={{ display: 'flex', gap: '8px' }}><button style={saveBtnStyle} onClick={handleSave}>✓ Save Insurance</button><button style={cancelBtnStyle} onClick={() => setShowAction(false)}>Cancel</button></div>
+            </div>
+        );
+
+        if (type === 'authorizations') content = (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', alignItems: 'end' }}>
+                <div><label style={labelSm}>New Auth #</label><input style={inputSm} value={renewForm.newAuthNo} placeholder="AUTH-2026-XXXXX" onChange={e => setRenewForm(f => ({ ...f, newAuthNo: e.target.value }))} /></div>
+                <div><label style={labelSm}>New Expiry Date</label><input type="date" style={inputSm} value={renewForm.newExpiry} onChange={e => setRenewForm(f => ({ ...f, newExpiry: e.target.value }))} /></div>
+                <div><label style={labelSm}>Visits Approved</label><input type="number" min="1" style={inputSm} value={renewForm.newVisits} placeholder="e.g. 6" onChange={e => setRenewForm(f => ({ ...f, newVisits: e.target.value }))} /></div>
+                <div style={{ gridColumn: '1 / -1' }}><label style={labelSm}>Notes</label><input style={inputSm} value={renewForm.notes} placeholder="Optional renewal notes..." onChange={e => setRenewForm(f => ({ ...f, notes: e.target.value }))} /></div>
+                <div style={{ display: 'flex', gap: '8px' }}><button style={saveBtnStyle} onClick={handleSave}>✓ Save Renewal</button><button style={cancelBtnStyle} onClick={() => setShowAction(false)}>Cancel</button></div>
+            </div>
+        );
+
+        if (type === 'referrals') content = (
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div><label style={labelSm}>Update Status</label>
+                    <select style={{ ...inputSm, minWidth: '180px' }} value={referralStatus} onChange={e => setReferralStatus(e.target.value)}>
+                        <option>Received</option><option>Report Pending</option><option>Awaiting Report</option><option>Completed</option><option>Closed</option>
+                    </select>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-end' }}>
+                    <button style={saveBtnStyle} onClick={handleSave}>✓ Update Status</button>
+                    <button style={cancelBtnStyle} onClick={() => setShowAction(false)}>Cancel</button>
+                </div>
+            </div>
+        );
+
+        if (type === 'denials') content = (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '10px', alignItems: 'end' }}>
+                <div><label style={labelSm}>Action</label>
+                    <select style={inputSm} value={denialAction} onChange={e => setDenialAction(e.target.value)}>
+                        <option value="appeal">🔄 File Appeal</option>
+                        <option value="rebill">📤 Re-bill Corrected Claim</option>
+                        <option value="writeoff">✏️ Write-off</option>
+                    </select>
+                </div>
+                <div><label style={labelSm}>Notes / Justification</label><input style={inputSm} value={denialNotes} placeholder="Add clinical justification or correction notes..." onChange={e => setDenialNotes(e.target.value)} /></div>
+                <div style={{ display: 'flex', gap: '8px' }}><button style={saveBtnStyle} onClick={handleSave}>✓ Submit</button><button style={cancelBtnStyle} onClick={() => setShowAction(false)}>Cancel</button></div>
+            </div>
+        );
+
+        return (
+            <tr style={{ backgroundColor: '#faf5ff', borderBottom: '2px solid #a941c620' }}>
+                <td colSpan={cols} style={{ padding: '16px 20px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#a941c6', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {type === 'eligibility' ? '📋 Update Insurance Information' : type === 'authorizations' ? '♻️ Renew Authorization' : type === 'referrals' ? '📄 Referral Status Update' : '⚖️ Work Denial'}
+                    </div>
+                    {content}
+                </td>
+            </tr>
+        );
+    };
+
     return (
-        <tr style={{
-            backgroundColor: isEven ? '#ffffff' : '#f8f9fa',
-            borderBottom: '1px solid #e2e8f0'
-        }}>
-            {renderRow()}
-        </tr>
+        <>
+            <tr style={{ backgroundColor: isEven ? '#ffffff' : '#f8f9fa', borderBottom: '1px solid #e2e8f0' }}>
+                {renderRow()}
+            </tr>
+            {renderActionPanel()}
+        </>
     );
 }
+

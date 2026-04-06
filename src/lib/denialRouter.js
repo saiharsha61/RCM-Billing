@@ -331,6 +331,8 @@ export function sendDenialNotification(task, notificationType = 'in-app') {
     };
 }
 
+export { DENIAL_ROUTING_RULES, CARC_DESCRIPTIONS };
+
 export default {
     routeDenial,
     batchRouteDenials,
@@ -340,3 +342,4 @@ export default {
     DENIAL_ROUTING_RULES,
     CARC_DESCRIPTIONS
 };
+

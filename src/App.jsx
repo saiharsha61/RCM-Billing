@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { authService } from './lib/auth';
 import mockData from './lib/mockData';
 import { getDataMode } from './lib/supabaseService';
@@ -11,7 +11,7 @@ import { AuthorizationHub } from './components/AuthorizationHub';
 import { PatientDemographics } from './components/PatientDemographics';
 import { InsuranceGuarantorInfo } from './components/InsuranceGuarantorInfo';
 import { JellyBeanNotifications, TaskWorklist } from './components/JellyBeanNotifications';
-import { ClaimsWorklist } from './components/ClaimsManagement';
+import { ClaimsWorklist, ClaimsHub } from './components/ClaimsManagement';
 import { TreatmentWindow } from './components/TreatmentWindow';
 import { ReportsDashboard, AdminSettings } from './components/AdminDashboard';
 import SmartForms from './components/SmartForms';
@@ -281,7 +281,7 @@ function App() {
           {currentPage === 'authorizations' && <AuthorizationHub />}
           {currentPage === 'clinical' && <TreatmentWindow patient={mockData.patients[0]} />}
           {currentPage === 'coding' && <CodingPage />}
-          {currentPage === 'claims' && <Claims onOpenWorklist={() => setShowClaimsWorklist(true)} />}
+          {currentPage === 'claims' && <ClaimsHub />}
           {currentPage === 'payments' && <PaymentsPage />}
           {currentPage === 'denials' && <DenialsPage />}
           {currentPage === 'documents' && <DocumentsPage />}

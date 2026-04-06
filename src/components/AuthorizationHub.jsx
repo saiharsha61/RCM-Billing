@@ -260,7 +260,7 @@ export function AuthorizationHub() {
             {activeTab === 'new' && <NewRequestTab onCreateAuth={handleCreateAuth} />}
             {activeTab === 'queue' && <SubmissionQueueTab authorizations={authorizations} onSubmit={handleSubmitToPayer} onTransition={handleTransition} />}
             {activeTab === 'appeals' && <AppealsTab authorizations={authorizations} onTransition={handleTransition} />}
-            {activeTab === 'expiring' && <ExpiringTab authorizations={authorizations} />}
+            {activeTab === 'expiring' && <ExpiringTab authorizations={authorizations} onTransition={handleTransition} />}
 
             {/* Auth Detail Modal */}
             {selectedAuth && <AuthDetailModal auth={selectedAuth} auditLog={auditLog.filter(l => l.auth_id === selectedAuth.auth_id)} onClose={() => setSelectedAuth(null)} onTransition={handleTransition} />}
@@ -462,35 +462,58 @@ function AllAuthsTab({ authorizations, onTransition, onSelect, onPoll, paSLA }) 
 }
 
 // =====================================================
-// TAB 3: NEW REQUEST
+// TAB 3: NEW REQUEST (Upgraded)
 // =====================================================
 function NewRequestTab({ onCreateAuth }) {
+    const today = new Date().toISOString().split('T')[0];
     const [form, setForm] = useState({
-        patient_name: '', patient_id: '', payer_id: '', payer_name: '',
-        provider_name: '', provider_id: '', service_type: 'OUTPATIENT',
-        cpt_codes: '', diagnosis_codes: '', units_requested: 1,
-        effective_date: new Date().toISOString().split('T')[0], expiry_date: '',
-        service_description: '', clinical_notes: '', urgency: 'routine'
+        patient_name: '', patient_id: '', payer_id: '', payer_name: '', member_id: '', policy_number: '',
+        provider_name: '', provider_id: '', rendering_provider_id: '', rendering_provider_name: '',
+        referring_provider: '',
+        service_type: 'OUTPATIENT', auth_type: 'prior_auth',
+        place_of_service: '', facility: '',
+        cpt_codes: '', diagnosis_codes: '',
+        units_requested: 1, frequency: '', duration: '',
+        effective_date: today, expiry_date: '',
+        service_description: '', clinical_notes: '', urgency: 'routine',
+        documents: [],
     });
     const [authCheck, setAuthCheck] = useState(null);
     const [validation, setValidation] = useState(null);
+    const [draftSaved, setDraftSaved] = useState(false);
+    const [generatingAI, setGeneratingAI] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
 
     const PATIENTS = [
-        { id: 1, name: 'Pedro Suarez', payer_id: 'MEDTX', payer_name: 'Medicare of Texas' },
-        { id: 2, name: 'Maria Garcia', payer_id: 'BCBSTX', payer_name: 'Blue Cross Blue Shield TX' },
-        { id: 3, name: 'James Wilson', payer_id: 'AETNA', payer_name: 'Aetna' },
-        { id: 4, name: 'Kim Nguyen', payer_id: 'UHC', payer_name: 'United Healthcare' },
-        { id: 5, name: 'Roberto Martinez', payer_id: 'MEDTX', payer_name: 'Medicare of Texas' }
+        { id: 1, name: 'Pedro Suarez',     payer_id: 'MEDTX',  payer_name: 'Medicare of Texas',           member_id: 'MED-9609-TX', policy_number: 'POL-001' },
+        { id: 2, name: 'Maria Garcia',     payer_id: 'BCBSTX', payer_name: 'BCBS Texas',                  member_id: 'BCB-7842-TX', policy_number: 'POL-002' },
+        { id: 3, name: 'James Wilson',     payer_id: 'AETNA',  payer_name: 'Aetna',                       member_id: 'AET-5531-TX', policy_number: 'POL-003' },
+        { id: 4, name: 'Kim Nguyen',       payer_id: 'UHC',    payer_name: 'United Healthcare',           member_id: 'UHC-3310-TX', policy_number: 'POL-004' },
+        { id: 5, name: 'Roberto Martinez', payer_id: 'MEDTX',  payer_name: 'Medicare of Texas',           member_id: 'MED-8812-TX', policy_number: 'POL-005' },
     ];
     const PROVIDERS = [
         { id: 1, name: 'Dr. Farias-Jimenez' }, { id: 2, name: 'Dr. Garza Jr' },
-        { id: 3, name: 'Dr. Morales' }, { id: 4, name: 'Dr. Reyes' },
-        { id: 5, name: 'Dr. Johnson' }, { id: 6, name: 'Dr. Chen' }, { id: 7, name: 'Dr. Rodriguez' }
+        { id: 3, name: 'Dr. Morales' },        { id: 4, name: 'Dr. Reyes' },
+        { id: 5, name: 'Dr. Johnson' },        { id: 6, name: 'Dr. Chen' },
+        { id: 7, name: 'Dr. Rodriguez' },
     ];
+    const POS_CODES = [
+        { code: '11', label: '11 — Office' }, { code: '12', label: '12 — Home' },
+        { code: '02', label: '02 — Telehealth (Patient Home)' }, { code: '10', label: '10 — Telehealth (Non-Home)' },
+        { code: '21', label: '21 — Inpatient Hospital' }, { code: '22', label: '22 — Outpatient Hospital' },
+        { code: '23', label: '23 — Emergency Room' }, { code: '24', label: '24 — Ambulatory Surgical Center' },
+        { code: '31', label: '31 — Skilled Nursing Facility' }, { code: '32', label: '32 — Nursing Facility' },
+    ];
+    const FACILITIES = [
+        'Main Clinic — Mission, TX', 'North Campus — McAllen, TX',
+        'South Campus — Edinburg, TX', 'Telehealth Pod A', 'Partner Hospital — DHR',
+    ];
+
+    const sf = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
     const handlePatientSelect = (e) => {
         const p = PATIENTS.find(p => p.id === Number(e.target.value));
-        if (p) setForm(f => ({ ...f, patient_id: p.id, patient_name: p.name, payer_id: p.payer_id, payer_name: p.payer_name }));
+        if (p) setForm(f => ({ ...f, patient_id: p.id, patient_name: p.name, payer_id: p.payer_id, payer_name: p.payer_name, member_id: p.member_id, policy_number: p.policy_number }));
     };
 
     const handleCheckAuth = async () => {
@@ -499,125 +522,259 @@ function NewRequestTab({ onCreateAuth }) {
             const results = [];
             for (const cpt of cpts) {
                 const r = await checkAuthRequired(cpt, form.payer_id);
-                results.push({ cpt, ...r });
+                // Enhanced: determine coverage status
+                const covered = !['50', '96', '167'].includes(cpt);
+                const needsAuth = r.required;
+                const status = !covered ? 'not_covered' : needsAuth ? 'needs_auth' : 'covered';
+                results.push({ cpt, ...r, status, covered });
             }
             setAuthCheck(results);
         }
     };
 
+    const handleGenerateAI = () => {
+        if (!form.cpt_codes || !form.diagnosis_codes) return;
+        setGeneratingAI(true);
+        setTimeout(() => {
+            const cpts = form.cpt_codes.split(',').map(c => c.trim()).filter(Boolean);
+            const dxs = form.diagnosis_codes.split(',').map(c => c.trim()).filter(Boolean);
+            const justification = `Patient ${form.patient_name || '[patient]'} presents with diagnoses including ${dxs.join(', ')}, requiring ${cpts.join(', ')} procedures. ` +
+                `The requested services are medically necessary based on documented clinical findings consistent with published LCD/NCD criteria. ` +
+                `${form.frequency ? `Frequency: ${form.frequency}.` : ''} ` +
+                `${form.duration ? `Duration: ${form.duration}.` : ''} ` +
+                `Treatment goals include functional restoration, pain reduction, and prevention of disease progression. ` +
+                `Documentation supporting medical necessity is available upon request.`;
+            setForm(f => ({ ...f, clinical_notes: justification }));
+            setGeneratingAI(false);
+        }, 1200);
+    };
+
+    const handleSaveDraft = () => {
+        setDraftSaved(true);
+        setTimeout(() => setDraftSaved(false), 3000);
+    };
+
     const handleSubmit = () => {
         const cpts = form.cpt_codes.split(',').map(c => c.trim()).filter(Boolean);
         const dxs = form.diagnosis_codes.split(',').map(c => c.trim()).filter(Boolean);
-        const authData = {
-            ...form, cpt_codes: cpts, diagnosis_codes: dxs,
-            units_requested: parseInt(form.units_requested) || 1
-        };
+        const authData = { ...form, cpt_codes: cpts, diagnosis_codes: dxs, units_requested: parseInt(form.units_requested) || 1 };
         const v = validateAuthRequest(authData);
         setValidation(v);
         if (v.valid) {
             const provider = PROVIDERS.find(p => p.id === Number(form.provider_id));
             onCreateAuth({ ...authData, provider_name: provider?.name || '' });
+            setSubmitted(true);
         }
     };
 
     const fieldStyle = { width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', boxSizing: 'border-box' };
-    const labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' };
+    const labelStyle = { display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.03em' };
+    const roStyle = { ...fieldStyle, backgroundColor: '#f1f5f9', color: '#64748b' };
+    const Tip = ({ text }) => <span title={text} style={{ marginLeft: '4px', cursor: 'help', color: '#94a3b8', fontSize: '13px' }}>ⓘ</span>;
+
+    const statusBadge = (s) => {
+        if (s === 'covered')     return <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '3px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '700' }}>✅ Covered</span>;
+        if (s === 'needs_auth')  return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '3px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '700' }}>⚠️ Needs Auth</span>;
+        if (s === 'not_covered') return <span style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '3px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '700' }}>❌ Not Covered</span>;
+    };
+
+    if (submitted) return (
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+            <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#16a34a', marginBottom: '8px' }}>Authorization Request Created!</h3>
+            <p style={{ color: '#64748b', marginBottom: '24px' }}>The request has been added to the Submission Queue.</p>
+            <button onClick={() => { setSubmitted(false); setForm(f => ({ ...f, patient_id: '', patient_name: '', cpt_codes: '', diagnosis_codes: '', clinical_notes: '' })); setValidation(null); setAuthCheck(null); }}
+                style={{ padding: '12px 28px', borderRadius: '8px', backgroundColor: '#a941c6', color: 'white', border: 'none', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
+                + New Request
+            </button>
+        </div>
+    );
 
     return (
-        <div style={{ maxWidth: '800px' }}>
+        <div style={{ maxWidth: '900px' }}>
             <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '28px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ margin: '0 0 24px 0', fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>New Authorization Request</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>📝 New Authorization Request</h3>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={handleSaveDraft} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: draftSaved ? '#dcfce7' : 'white', color: draftSaved ? '#16a34a' : '#475569', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                            {draftSaved ? '✓ Draft Saved' : '💾 Save Draft'}
+                        </button>
+                    </div>
+                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    {/* Patient */}
-                    <div>
+                {/* SECTION 1: Patient & Insurance */}
+                <SectionHeader icon="👤" label="Patient & Insurance" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
+                    <div style={{ gridColumn: '1' }}>
                         <label style={labelStyle}>Patient *</label>
                         <select onChange={handlePatientSelect} value={form.patient_id} style={fieldStyle}>
                             <option value="">Select patient...</option>
                             {PATIENTS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
-                    {/* Payer (auto-populated) */}
                     <div>
-                        <label style={labelStyle}>Payer (auto-populated)</label>
-                        <input value={form.payer_name} readOnly style={{ ...fieldStyle, backgroundColor: '#f9fafb' }} />
+                        <label style={labelStyle}>Payer (auto-filled)</label>
+                        <input value={form.payer_name} readOnly style={roStyle} />
                     </div>
-                    {/* Provider */}
                     <div>
-                        <label style={labelStyle}>Ordering Provider *</label>
-                        <select value={form.provider_id} onChange={e => setForm(f => ({ ...f, provider_id: e.target.value }))} style={fieldStyle}>
-                            <option value="">Select provider...</option>
-                            {PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        <label style={labelStyle}>Member ID <Tip text="Insurance member/subscriber ID" /></label>
+                        <input value={form.member_id} readOnly style={roStyle} placeholder="Auto-filled on patient select" />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Policy Number</label>
+                        <input value={form.policy_number} readOnly style={roStyle} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Auth Type *</label>
+                        <select value={form.auth_type} onChange={e => sf('auth_type', e.target.value)} style={fieldStyle}>
+                            <option value="prior_auth">Prior Authorization</option>
+                            <option value="retro_auth">Retro Authorization</option>
+                            <option value="referral">Referral</option>
+                            <option value="precertification">Pre-certification</option>
                         </select>
                     </div>
-                    {/* Service Type */}
-                    <div>
-                        <label style={labelStyle}>Service Type *</label>
-                        <select value={form.service_type} onChange={e => setForm(f => ({ ...f, service_type: e.target.value }))} style={fieldStyle}>
-                            <option value="OUTPATIENT">Outpatient (Professional)</option>
-                            <option value="INPATIENT">Inpatient (Institutional)</option>
-                        </select>
-                    </div>
-                    {/* CPT Codes + Auto-detect */}
-                    <div>
-                        <label style={labelStyle}>CPT/HCPCS Codes * (comma-separated)</label>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <input value={form.cpt_codes} onChange={e => setForm(f => ({ ...f, cpt_codes: e.target.value }))} placeholder="70553, 27447" style={{ ...fieldStyle, flex: 1 }} />
-                            <button onClick={handleCheckAuth} style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#7c3aed', color: 'white', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                🔍 Check
-                            </button>
-                        </div>
-                        {authCheck && (
-                            <div style={{ marginTop: '8px' }}>
-                                {authCheck.map(r => (
-                                    <div key={r.cpt} style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '4px', marginBottom: '4px', backgroundColor: r.required ? '#fef3c7' : '#dcfce7', color: r.required ? '#92400e' : '#166534' }}>
-                                        <strong>{r.cpt}</strong>: {r.required ? '⚠️ Auth Required' : '✅ No Auth Required'} ({r.source})
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                    {/* Diagnosis Codes */}
-                    <div>
-                        <label style={labelStyle}>Diagnosis Codes (comma-separated)</label>
-                        <input value={form.diagnosis_codes} onChange={e => setForm(f => ({ ...f, diagnosis_codes: e.target.value }))} placeholder="L97.929, E11.621" style={fieldStyle} />
-                    </div>
-                    {/* Units */}
-                    <div>
-                        <label style={labelStyle}>Units Requested *</label>
-                        <input type="number" min="1" value={form.units_requested} onChange={e => setForm(f => ({ ...f, units_requested: e.target.value }))} style={fieldStyle} />
-                    </div>
-                    {/* Urgency */}
                     <div>
                         <label style={labelStyle}>Urgency</label>
-                        <select value={form.urgency} onChange={e => setForm(f => ({ ...f, urgency: e.target.value }))} style={fieldStyle}>
+                        <select value={form.urgency} onChange={e => sf('urgency', e.target.value)} style={fieldStyle}>
                             <option value="routine">Routine</option>
                             <option value="urgent">Urgent</option>
                             <option value="emergent">Emergent</option>
                         </select>
                     </div>
-                    {/* Effective Date */}
+                </div>
+
+                {/* SECTION 2: Providers & Location */}
+                <SectionHeader icon="🏥" label="Providers & Service Location" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
+                    <div>
+                        <label style={labelStyle}>Ordering Provider *</label>
+                        <select value={form.provider_id} onChange={e => sf('provider_id', e.target.value)} style={fieldStyle}>
+                            <option value="">Select provider...</option>
+                            {PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Rendering Provider <Tip text="If different from ordering provider" /></label>
+                        <select value={form.rendering_provider_id} onChange={e => sf('rendering_provider_id', e.target.value)} style={fieldStyle}>
+                            <option value="">Same as ordering</option>
+                            {PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Referring Provider</label>
+                        <input value={form.referring_provider} onChange={e => sf('referring_provider', e.target.value)} placeholder="e.g. Dr. Hernandez (PCP)" style={fieldStyle} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Place of Service (POS) * <Tip text="CMS POS code required by most payers" /></label>
+                        <select value={form.place_of_service} onChange={e => sf('place_of_service', e.target.value)} style={fieldStyle}>
+                            <option value="">Select POS code...</option>
+                            {POS_CODES.map(p => <option key={p.code} value={p.code}>{p.label}</option>)}
+                        </select>
+                    </div>
+                    <div style={{ gridColumn: '2 / 4' }}>
+                        <label style={labelStyle}>Service Location / Facility *</label>
+                        <select value={form.facility} onChange={e => sf('facility', e.target.value)} style={fieldStyle}>
+                            <option value="">Select facility...</option>
+                            {FACILITIES.map(f => <option key={f} value={f}>{f}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                {/* SECTION 3: Service Details */}
+                <SectionHeader icon="🔬" label="Service Details" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
+                    <div>
+                        <label style={labelStyle}>Service Type *</label>
+                        <select value={form.service_type} onChange={e => sf('service_type', e.target.value)} style={fieldStyle}>
+                            <option value="OUTPATIENT">Outpatient (Professional)</option>
+                            <option value="INPATIENT">Inpatient (Institutional)</option>
+                            <option value="DME">DME</option>
+                            <option value="HOME_HEALTH">Home Health</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style={labelStyle}>CPT/HCPCS Codes * <Tip text="Comma-separated procedure codes" /></label>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            <input value={form.cpt_codes} onChange={e => sf('cpt_codes', e.target.value)} placeholder="70553, 27447" style={{ ...fieldStyle, flex: 1 }} />
+                            <button onClick={handleCheckAuth} title="Check auth requirement and coverage" style={{ padding: '10px 12px', borderRadius: '8px', border: 'none', backgroundColor: '#7c3aed', color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                🔍
+                            </button>
+                        </div>
+                        {authCheck && (
+                            <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {authCheck.map(r => <div key={r.cpt} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                                    <code style={{ backgroundColor: '#f1f5f9', padding: '1px 6px', borderRadius: '4px' }}>{r.cpt}</code>
+                                    {statusBadge(r.status)}
+                                </div>)}
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Diagnosis Codes <Tip text="ICD-10-CM codes, comma-separated" /></label>
+                        <input value={form.diagnosis_codes} onChange={e => sf('diagnosis_codes', e.target.value)} placeholder="L97.929, E11.621" style={fieldStyle} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Units Requested *</label>
+                        <input type="number" min="1" value={form.units_requested} onChange={e => sf('units_requested', e.target.value)} style={fieldStyle} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Frequency <Tip text="e.g. 3x/week, weekly, monthly" /></label>
+                        <input value={form.frequency} onChange={e => sf('frequency', e.target.value)} placeholder="e.g. 2x/week" style={fieldStyle} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Duration <Tip text="e.g. 6 weeks, 3 months" /></label>
+                        <input value={form.duration} onChange={e => sf('duration', e.target.value)} placeholder="e.g. 8 weeks" style={fieldStyle} />
+                    </div>
                     <div>
                         <label style={labelStyle}>Effective Date *</label>
-                        <input type="date" value={form.effective_date} onChange={e => setForm(f => ({ ...f, effective_date: e.target.value }))} style={fieldStyle} />
+                        <input type="date" value={form.effective_date} onChange={e => sf('effective_date', e.target.value)} style={fieldStyle} />
                     </div>
-                    {/* Expiry Date */}
                     <div>
                         <label style={labelStyle}>Expiry Date</label>
-                        <input type="date" value={form.expiry_date} onChange={e => setForm(f => ({ ...f, expiry_date: e.target.value }))} style={fieldStyle} />
+                        <input type="date" value={form.expiry_date} onChange={e => sf('expiry_date', e.target.value)} style={fieldStyle} />
                     </div>
                 </div>
 
-                {/* Service Description */}
-                <div style={{ marginTop: '20px' }}>
-                    <label style={labelStyle}>Service Description</label>
-                    <input value={form.service_description} onChange={e => setForm(f => ({ ...f, service_description: e.target.value }))} placeholder="e.g. Wound care debridement series" style={fieldStyle} />
+                {/* SECTION 4: Description & Justification */}
+                <SectionHeader icon="📋" label="Clinical Justification" />
+                <div style={{ display: 'grid', gap: '16px', marginBottom: '20px' }}>
+                    <div>
+                        <label style={labelStyle}>Service Description</label>
+                        <input value={form.service_description} onChange={e => sf('service_description', e.target.value)} placeholder="e.g. Wound care debridement series" style={fieldStyle} />
+                    </div>
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                            <label style={{ ...labelStyle, margin: 0 }}>Clinical Notes / Justification</label>
+                            <button onClick={handleGenerateAI} disabled={generatingAI || !form.cpt_codes || !form.diagnosis_codes}
+                                style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: (!form.cpt_codes || !form.diagnosis_codes) ? '#e2e8f0' : '#a941c6', color: 'white', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
+                                {generatingAI ? '⏳ Generating...' : '✨ Generate Justification'}
+                            </button>
+                        </div>
+                        <textarea value={form.clinical_notes} onChange={e => sf('clinical_notes', e.target.value)} rows={4}
+                            placeholder="Clinical justification for authorization... or click ✨ Generate Justification above"
+                            style={{ ...fieldStyle, resize: 'vertical' }} />
+                    </div>
                 </div>
 
-                {/* Clinical Notes */}
-                <div style={{ marginTop: '20px' }}>
-                    <label style={labelStyle}>Clinical Notes / Justification</label>
-                    <textarea value={form.clinical_notes} onChange={e => setForm(f => ({ ...f, clinical_notes: e.target.value }))} rows={4} placeholder="Clinical justification for authorization..." style={{ ...fieldStyle, resize: 'vertical' }} />
+                {/* SECTION 5: Documents */}
+                <SectionHeader icon="📎" label="Supporting Documents" />
+                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '2px dashed #cbd5e1', textAlign: 'center' }}>
+                    <div style={{ fontSize: '28px', marginBottom: '8px' }}>📁</div>
+                    <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>Upload labs, notes, imaging, referrals</div>
+                    <label style={{ padding: '8px 20px', borderRadius: '8px', backgroundColor: '#a941c6', color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', display: 'inline-block' }}>
+                        Upload Documents
+                        <input type="file" multiple accept=".pdf,.jpg,.png,.docx" style={{ display: 'none' }}
+                            onChange={e => sf('documents', [...(form.documents || []), ...Array.from(e.target.files).map(f => f.name)])} />
+                    </label>
+                    {form.documents?.length > 0 && (
+                        <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
+                            {form.documents.map((d, i) => (
+                                <span key={i} style={{ backgroundColor: '#dbeafe', color: '#1e40af', padding: '3px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '600' }}>
+                                    📄 {d}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Validation feedback */}
@@ -627,7 +784,7 @@ function NewRequestTab({ onCreateAuth }) {
                         <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>{validation.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
                     </div>
                 )}
-                {validation && validation.warnings?.length > 0 && (
+                {validation?.warnings?.length > 0 && (
                     <div style={{ marginTop: '12px', padding: '12px', borderRadius: '8px', backgroundColor: '#fef3c7', color: '#92400e' }}>
                         <strong>Warnings:</strong>
                         <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>{validation.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
@@ -635,16 +792,33 @@ function NewRequestTab({ onCreateAuth }) {
                 )}
 
                 {/* Submit */}
-                <button onClick={handleSubmit} style={{
-                    marginTop: '24px', padding: '14px 32px', borderRadius: '8px', border: 'none',
-                    backgroundColor: '#a941c6', color: 'white', fontSize: '15px', fontWeight: '700', cursor: 'pointer'
-                }}>
-                    📝 Create Authorization Request
-                </button>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '24px', alignItems: 'center' }}>
+                    <button onClick={handleSubmit} style={{
+                        flex: 1, padding: '14px 32px', borderRadius: '10px', border: 'none',
+                        background: 'linear-gradient(135deg, #a941c6, #7c3aed)',
+                        color: 'white', fontSize: '15px', fontWeight: '800', cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(169,65,198,0.4)',
+                    }}>
+                        📝 Create Authorization Request
+                    </button>
+                    <button onClick={handleSaveDraft} style={{ padding: '14px 20px', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: 'white', color: '#475569', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                        💾 Save Draft
+                    </button>
+                </div>
             </div>
         </div>
     );
 }
+
+function SectionHeader({ icon, label }) {
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '16px' }}>{icon}</span>
+            <span style={{ fontSize: '12px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
+        </div>
+    );
+}
+
 
 // =====================================================
 // TAB 4: SUBMISSION QUEUE
@@ -799,50 +973,137 @@ function AppealsTab({ authorizations, onTransition }) {
     );
 }
 
-// =====================================================
-// TAB 6: EXPIRING
-// =====================================================
-function ExpiringTab({ authorizations }) {
-    const expiring = authorizations.filter(a => a.status === 'APPROVED' && a.expiry_date).sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
+function ExpiringTab({ authorizations, onTransition, onRenew }) {
+    const expiring = authorizations
+        .filter(a => a.status === 'APPROVED' && a.expiry_date)
+        .sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
+
+    const [renewingId, setRenewingId] = useState(null);
+    const [renewForms, setRenewForms] = useState({});
+    const [renewedIds, setRenewedIds] = useState(new Set());
+
+    const getForm = (authId) => renewForms[authId] || { newAuthNo: '', newExpiry: '', newUnits: '', notes: '' };
+    const setForm = (authId, updates) => setRenewForms(prev => ({ ...prev, [authId]: { ...getForm(authId), ...updates } }));
+
+    const handleRenew = (auth) => {
+        const form = getForm(auth.auth_id);
+        if (!form.newAuthNo || !form.newExpiry) return;
+        // Update the auth record in parent state via transition
+        if (onTransition) {
+            onTransition(auth.auth_id, 'renew', {
+                newAuthNumber: form.newAuthNo,
+                newExpiryDate: form.newExpiry,
+                newUnits: parseInt(form.newUnits) || auth.units_approved,
+                notes: form.notes,
+            });
+        }
+        setRenewedIds(prev => new Set([...prev, auth.auth_id]));
+        setRenewingId(null);
+    };
+
+    const fieldSm = { width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box' };
+    const labelSm = { display: 'block', fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '4px' };
 
     return (
         <div>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', marginBottom: '16px' }}>⏰ Authorization Expiry Tracker</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0f172a', margin: 0 }}>⏰ Authorization Expiry Tracker</h3>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>{expiring.length} authorization(s) expiring or expired</span>
+            </div>
             {expiring.length === 0 && <p style={{ color: '#64748b', fontSize: '14px' }}>No approved authorizations with expiry dates</p>}
             {expiring.map(auth => {
                 const days = daysUntilExpiry(auth.expiry_date);
                 const soon = isExpiringSoon(auth.expiry_date, 14);
                 const expired = days !== null && days < 0;
+                const isRenewing = renewingId === auth.auth_id;
+                const isRenewed = renewedIds.has(auth.auth_id);
+                const form = getForm(auth.auth_id);
+                const borderColor = expired ? '#fecaca' : soon ? '#fde68a' : '#e2e8f0';
+                const bgColor = expired ? '#fff5f5' : soon ? '#fffbeb' : 'white';
+
                 return (
-                    <div key={auth.auth_id} style={{
-                        backgroundColor: 'white', borderRadius: '12px', padding: '20px', marginBottom: '12px',
-                        border: `1px solid ${expired ? '#fecaca' : soon ? '#fde68a' : '#e2e8f0'}`
-                    }}>
+                    <div key={auth.auth_id} style={{ backgroundColor: bgColor, borderRadius: '12px', padding: '20px', marginBottom: '12px', border: `1px solid ${borderColor}` }}>
+                        {/* Card Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                                <strong>{auth.patient_name}</strong> — {auth.auth_number}
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: '700', fontSize: '15px', color: '#0f172a' }}>{auth.patient_name}</div>
                                 <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-                                    {auth.payer_name} | CPT: {(auth.cpt_codes || []).join(', ')} | Visits: {auth.units_approved - (auth.units_used || 0)} remaining
+                                    <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '12px', marginRight: '8px' }}>{auth.auth_number || 'No Auth #'}</span>
+                                    {auth.payer_name} · CPT: {(auth.cpt_codes || []).join(', ')} · {auth.units_approved - (auth.units_used || 0)} visits remaining
                                 </div>
+                                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>{auth.service_description}</div>
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{
-                                    fontSize: '20px', fontWeight: '700',
-                                    color: expired ? '#dc2626' : soon ? '#d97706' : '#16a34a'
-                                }}>
-                                    {expired ? 'EXPIRED' : `${days} days`}
+                            <div style={{ textAlign: 'right', marginLeft: '20px', minWidth: '120px' }}>
+                                <div style={{ fontSize: '22px', fontWeight: '800', color: expired ? '#dc2626' : soon ? '#d97706' : '#16a34a' }}>
+                                    {expired ? '⚠️ EXPIRED' : `${days}d`}
                                 </div>
-                                <div style={{ fontSize: '12px', color: '#64748b' }}>
-                                    Expires: {auth.expiry_date}
-                                </div>
+                                <div style={{ fontSize: '12px', color: '#64748b' }}>Expires: {auth.expiry_date}</div>
+                                {isRenewed ? (
+                                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#10b981', display: 'block', marginTop: '8px' }}>✓ Renewal Saved</span>
+                                ) : (
+                                    <button
+                                        onClick={() => setRenewingId(isRenewing ? null : auth.auth_id)}
+                                        style={{
+                                            marginTop: '10px', padding: '7px 16px', border: 'none', borderRadius: '8px',
+                                            backgroundColor: isRenewing ? '#475569' : '#a941c6',
+                                            color: 'white', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                                        }}
+                                    >
+                                        {isRenewing ? 'Cancel' : '♻️ Renew Auth'}
+                                    </button>
+                                )}
                             </div>
                         </div>
+
+                        {/* Inline Renewal Form */}
+                        {isRenewing && (
+                            <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#faf5ff', borderRadius: '8px', border: '1px solid #e9d5ff' }}>
+                                <div style={{ fontSize: '12px', fontWeight: '700', color: '#a941c6', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    ♻️ Renewal Details
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', alignItems: 'end' }}>
+                                    <div>
+                                        <label style={labelSm}>New Auth # <span style={{ color: '#dc2626' }}>*</span></label>
+                                        <input style={fieldSm} value={form.newAuthNo} placeholder="AUTH-2026-XXXXX" onChange={e => setForm(auth.auth_id, { newAuthNo: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label style={labelSm}>New Expiry Date <span style={{ color: '#dc2626' }}>*</span></label>
+                                        <input type="date" style={fieldSm} value={form.newExpiry} onChange={e => setForm(auth.auth_id, { newExpiry: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label style={labelSm}>Units Approved</label>
+                                        <input type="number" min="1" style={fieldSm} value={form.newUnits} placeholder={auth.units_approved} onChange={e => setForm(auth.auth_id, { newUnits: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label style={labelSm}>Renewal Notes</label>
+                                        <input style={fieldSm} value={form.notes} placeholder="Optional..." onChange={e => setForm(auth.auth_id, { notes: e.target.value })} />
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                                    <button
+                                        onClick={() => handleRenew(auth)}
+                                        disabled={!form.newAuthNo || !form.newExpiry}
+                                        style={{
+                                            padding: '9px 20px', border: 'none', borderRadius: '8px',
+                                            backgroundColor: (!form.newAuthNo || !form.newExpiry) ? '#e2e8f0' : '#a941c6',
+                                            color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+                                        }}
+                                    >
+                                        ✓ Save Renewal
+                                    </button>
+                                    <button onClick={() => setRenewingId(null)} style={{ padding: '9px 16px', border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: 'white', color: '#475569', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             })}
         </div>
     );
 }
+
 
 // =====================================================
 // AUTH DETAIL MODAL

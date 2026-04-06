@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { fhirServer } from '../lib/fhirServer';
 import { fhirAuth } from '../lib/fhirAuth';
+import { routeDenial, DENIAL_ROUTING_RULES, CARC_DESCRIPTIONS } from '../lib/denialRouter';
 
 export function FHIRDocumentation() {
     const [activeTab, setActiveTab] = useState('overview');
@@ -28,7 +29,8 @@ export function FHIRDocumentation() {
                     { id: 'auth', label: 'Authentication', icon: '🔐' },
                     { id: 'endpoints', label: 'Endpoints', icon: '🔌' },
                     { id: 'examples', label: 'Examples', icon: '💡' },
-                    { id: 'tester', label: 'API Tester', icon: '🧪' }
+                    { id: 'tester', label: 'API Tester', icon: '🧪' },
+                    { id: 'denials', label: 'Denials API', icon: '⚖️' }
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -57,6 +59,7 @@ export function FHIRDocumentation() {
                 {activeTab === 'endpoints' && <EndpointsTab />}
                 {activeTab === 'examples' && <ExamplesTab />}
                 {activeTab === 'tester' && <APITesterTab />}
+                {activeTab === 'denials' && <DenialsAPITab />}
             </div>
         </div>
     );
@@ -773,6 +776,314 @@ function APITesterTab() {
                         }}>
                             {result.body}
                         </pre>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// =====================================================
+// DENIALS API TAB
+// =====================================================
+function DenialsAPITab() {
+    const [carcLookup, setCarcLookup] = useState('');
+    const [lookupResult, setLookupResult] = useState(null);
+    const [activeSection, setActiveSection] = useState('routing');
+
+    const PRIORITY_COLORS = { high: { bg: '#fee2e2', color: '#991b1b', label: '🔴 High' }, medium: { bg: '#fef3c7', color: '#92400e', label: '🟡 Medium' }, low: { bg: '#dcfce7', color: '#166534', label: '🟢 Low' } };
+    const DEPT_ICONS = { 'Front Desk': '🏥', 'Coding': '💻', 'Provider': '👨‍⚕️', 'Authorizations': '🔐', 'Billing': '💰', 'Registration': '📝', 'Contracting': '📄' };
+
+    const handleLookup = () => {
+        const code = carcLookup.trim();
+        if (!code) return;
+        const result = routeDenial({ reasonCode: code, claimId: 'DEMO-001', patientName: 'Demo Patient', amount: 1000, denialDate: new Date().toISOString() });
+        setLookupResult(result);
+    };
+
+    const sections = [
+        { id: 'routing', label: 'Routing Rules' },
+        { id: 'medical', label: 'Medical Necessity' },
+        { id: 'endpoints', label: 'JS API Reference' },
+        { id: 'examples', label: 'JSON Examples' },
+        { id: 'lookup', label: '🔍 CARC Lookup' },
+    ];
+
+    const subTabStyle = (id) => ({
+        padding: '8px 16px', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '13px', fontWeight: '600',
+        backgroundColor: activeSection === id ? '#dc2626' : '#f1f5f9',
+        color: activeSection === id ? 'white' : '#475569',
+    });
+
+    return (
+        <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <div>
+                    <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a', margin: 0 }}>⚖️ Denials Management API</h3>
+                    <p style={{ color: '#64748b', fontSize: '13px', margin: '4px 0 0 0' }}>CARC-based routing engine · Medical necessity · Multi-department workflow</p>
+                </div>
+                <span style={{ marginLeft: 'auto', padding: '4px 12px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>RCM Core</span>
+            </div>
+
+            {/* Sub-nav */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                {sections.map(s => <button key={s.id} style={subTabStyle(s.id)} onClick={() => setActiveSection(s.id)}>{s.label}</button>)}
+            </div>
+
+            {/* ROUTING RULES */}
+            {activeSection === 'routing' && (
+                <div>
+                    <p style={{ color: '#475569', marginBottom: '16px', fontSize: '14px', lineHeight: '1.6' }}>
+                        The denial router maps <strong>CARC (Claim Adjustment Reason Codes)</strong> to the correct department, SLA, and priority. Each incoming denial is automatically classified into one of 7 categories.
+                    </p>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                            <thead>
+                                <tr style={{ backgroundColor: '#f8fafc' }}>
+                                    {['Category', 'Department', 'Priority', 'SLA', 'CARC Codes', 'Description'].map(h => (
+                                        <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: '600', color: '#374151', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Object.entries(DENIAL_ROUTING_RULES).map(([cat, rule], i) => {
+                                    const pc = PRIORITY_COLORS[rule.priority];
+                                    return (
+                                        <tr key={cat} style={{ backgroundColor: i % 2 === 0 ? 'white' : '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                            <td style={{ padding: '10px 12px', fontWeight: '600', color: '#0f172a', textTransform: 'capitalize' }}>{cat.replace(/([A-Z])/g, ' $1')}</td>
+                                            <td style={{ padding: '10px 12px' }}>{DEPT_ICONS[rule.department] || ''} {rule.department}</td>
+                                            <td style={{ padding: '10px 12px' }}>
+                                                <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '700', backgroundColor: pc.bg, color: pc.color }}>{pc.label}</span>
+                                            </td>
+                                            <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontWeight: '600' }}>{rule.sla}h</td>
+                                            <td style={{ padding: '10px 12px' }}>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', maxWidth: '200px' }}>
+                                                    {rule.codes.slice(0, 6).map(c => <code key={c} style={{ backgroundColor: '#f1f5f9', padding: '1px 5px', borderRadius: '3px', fontSize: '11px' }}>{c}</code>)}
+                                                    {rule.codes.length > 6 && <span style={{ fontSize: '11px', color: '#94a3b8' }}>+{rule.codes.length - 6} more</span>}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '10px 12px', color: '#64748b', fontSize: '12px' }}>{rule.description}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* MEDICAL NECESSITY */}
+            {activeSection === 'medical' && (
+                <div>
+                    <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '12px' }}>🏥 Medical Necessity Denials</h4>
+                    <p style={{ color: '#475569', fontSize: '14px', lineHeight: '1.7', marginBottom: '16px' }}>
+                        Medical necessity denials occur when a payer determines that a service is not medically necessary based on <strong>LCD (Local Coverage Determinations)</strong> or <strong>NCD (National Coverage Determinations)</strong>. These route to the <strong>Provider department</strong> with a 72-hour SLA.
+                    </p>
+                    {[
+                        { title: 'CARC 50 — Non-covered services', carc: '50', msg: 'These are services not covered by the payer for this diagnosis. Review the LCD/NCD for the CPT code billed.', action: 'Appeal with medical record + clinical justification letter' },
+                        { title: 'CARC 167 — Diagnosis not covered', carc: '167', msg: 'The ICD-10 diagnosis code billed does not support medical necessity under the applicable LCD.', action: 'Review supported ICD-10 codes in LCD. If clinically appropriate, re-code or obtain peer-to-peer.' },
+                        { title: 'CARC 197 — Authorization required', carc: '197', msg: 'Service required prior authorization that was not obtained or not valid.', action: 'Check if retroactive auth is available. Submit appeal with original auth documentation.' },
+                        { title: 'CARC A1 — Services not medically necessary', carc: 'A1', msg: 'Clinical documentation did not support the level or type of service.', action: 'Request peer-to-peer review with payer medical director within 72 hours.' },
+                    ].map(item => (
+                        <div key={item.carc} style={{ backgroundColor: 'white', border: '1px solid #fecaca', borderLeft: '4px solid #dc2626', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <strong style={{ color: '#0f172a', fontSize: '14px' }}>{item.title}</strong>
+                                <code style={{ backgroundColor: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontFamily: 'monospace' }}>CARC {item.carc}</code>
+                            </div>
+                            <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 8px 0' }}>{item.msg}</p>
+                            <div style={{ backgroundColor: '#fef3c7', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', color: '#92400e' }}>
+                                <strong>Recommended Action:</strong> {item.action}
+                            </div>
+                        </div>
+                    ))}
+                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '16px', marginTop: '16px' }}>
+                        <strong style={{ color: '#166534', display: 'block', marginBottom: '8px' }}>📚 LCD/NCD Resources</strong>
+                        <ul style={{ margin: 0, paddingLeft: '20px', color: '#15803d', fontSize: '13px', lineHeight: '1.8' }}>
+                            <li>CMS LCD Database: <code style={{ backgroundColor: '#dcfce7', padding: '1px 6px', borderRadius: '3px' }}>cms.gov/medicare-coverage-database</code></li>
+                            <li>NGS Medicare LCD Lookup: Filter by CPT code and state</li>
+                            <li>Noridian, CGS, WPS LCDs for Texas/Southwest jurisdiction</li>
+                        </ul>
+                    </div>
+                </div>
+            )}
+
+            {/* JS API REFERENCE */}
+            {activeSection === 'endpoints' && (
+                <div>
+                    <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '16px' }}>📦 denialRouter.js — API Reference</h4>
+                    {[
+                        {
+                            fn: 'routeDenial(denial)', returns: 'Object',
+                            desc: 'Routes a single denial to the appropriate department based on CARC code.',
+                            params: [
+                                { name: 'denial.reasonCode', type: 'string', desc: 'CARC code (e.g. "197", "50", "A1")' },
+                                { name: 'denial.claimId', type: 'string', desc: 'Claim identifier' },
+                                { name: 'denial.patientName', type: 'string', desc: 'Patient full name' },
+                                { name: 'denial.amount', type: 'number', desc: 'Dollar amount of denied claim' },
+                                { name: 'denial.denialDate', type: 'string', desc: 'ISO date string of denial' },
+                            ],
+                        },
+                        {
+                            fn: 'batchRouteDenials(denials[])', returns: '{ summary, byDepartment, all }',
+                            desc: 'Routes multiple denials and groups results by department.',
+                            params: [{ name: 'denials', type: 'Array<denial>', desc: 'Array of denial objects (same shape as routeDenial input)' }],
+                        },
+                        {
+                            fn: 'getDenialStatistics(denials[])', returns: 'Stats Object',
+                            desc: 'Returns aggregate stats: counts by dept, priority, category, overdue count.',
+                            params: [{ name: 'denials', type: 'Array<routedDenial>', desc: 'Array of already-routed denial objects' }],
+                        },
+                        {
+                            fn: 'createDenialTask(routedDenial)', returns: 'Task Object',
+                            desc: 'Creates a structured task with recommended actions from a routed denial.',
+                            params: [{ name: 'routedDenial', type: 'Object', desc: 'Output of routeDenial()' }],
+                        },
+                    ].map(api => (
+                        <div key={api.fn} style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '16px', marginBottom: '12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <code style={{ backgroundColor: '#1e293b', color: '#38bdf8', padding: '6px 12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '13px' }}>{api.fn}</code>
+                                <span style={{ fontSize: '12px', color: '#64748b' }}>→ <code style={{ backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{api.returns}</code></span>
+                            </div>
+                            <p style={{ color: '#475569', fontSize: '13px', margin: '8px 0' }}>{api.desc}</p>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                                <thead><tr style={{ backgroundColor: '#e2e8f0' }}>
+                                    <th style={{ padding: '6px 10px', textAlign: 'left' }}>Param</th>
+                                    <th style={{ padding: '6px 10px', textAlign: 'left' }}>Type</th>
+                                    <th style={{ padding: '6px 10px', textAlign: 'left' }}>Description</th>
+                                </tr></thead>
+                                <tbody>{api.params.map(p => (
+                                    <tr key={p.name} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                        <td style={{ padding: '6px 10px' }}><code style={{ color: '#7c3aed' }}>{p.name}</code></td>
+                                        <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: '#2563eb' }}>{p.type}</td>
+                                        <td style={{ padding: '6px 10px', color: '#64748b' }}>{p.desc}</td>
+                                    </tr>
+                                ))}</tbody>
+                            </table>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* JSON EXAMPLES */}
+            {activeSection === 'examples' && (
+                <div>
+                    <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '16px' }}>💡 JSON Request/Response Examples</h4>
+                    {[
+                        {
+                            title: 'Route a Medical Necessity Denial (CARC 197)',
+                            req: `routeDenial({
+  reasonCode: "197",
+  claimId: "CLM-2026-00142",
+  patientName: "Pedro Suarez",
+  amount: 2850.00,
+  denialDate: "2026-03-23T10:00:00Z"
+})`,
+                            res: `{
+  "claimId": "CLM-2026-00142",
+  "reasonCode": "197",
+  "reasonDescription": "Precertification/authorization/notification required",
+  "category": "authorization",
+  "department": "Authorizations",
+  "priority": "high",
+  "sla": 24,
+  "dueDate": "2026-03-24T10:00:00Z",
+  "status": "new"
+}`
+                        },
+                        {
+                            title: 'Batch Route — By Department Summary',
+                            req: `batchRouteDenials([
+  { reasonCode: "50", amount: 1200 },
+  { reasonCode: "97", amount: 450 },
+  { reasonCode: "197", amount: 2800 }
+]).summary`,
+                            res: `{
+  "totalDenials": 3,
+  "totalAmount": 4450,
+  "departments": 3
+  // byDepartment: Provider, Billing, Authorizations
+}`
+                        },
+                    ].map((ex, i) => (
+                        <div key={i} style={{ marginBottom: '24px' }}>
+                            <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '12px' }}>{ex.title}</h5>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div>
+                                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', marginBottom: '6px', textTransform: 'uppercase' }}>Request</div>
+                                    <pre style={{ backgroundColor: '#1e293b', color: '#10b981', padding: '14px', borderRadius: '8px', fontSize: '12px', fontFamily: 'monospace', margin: 0, overflowX: 'auto' }}>{ex.req}</pre>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', marginBottom: '6px', textTransform: 'uppercase' }}>Response</div>
+                                    <pre style={{ backgroundColor: '#1e293b', color: '#38bdf8', padding: '14px', borderRadius: '8px', fontSize: '12px', fontFamily: 'monospace', margin: 0, overflowX: 'auto' }}>{ex.res}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* CARC LOOKUP */}
+            {activeSection === 'lookup' && (
+                <div>
+                    <h4 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>🔍 Interactive CARC Code Lookup</h4>
+                    <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '16px' }}>Enter any CARC code to instantly see its description, routing department, priority, and SLA.</p>
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                        <input
+                            value={carcLookup}
+                            onChange={e => setCarcLookup(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleLookup()}
+                            placeholder="Enter CARC code (e.g. 197, 50, A1, B7)"
+                            style={{ flex: 1, padding: '10px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontFamily: 'monospace' }}
+                        />
+                        <button onClick={handleLookup} style={{ padding: '10px 24px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>Look Up</button>
+                    </div>
+
+                    {lookupResult && (() => {
+                        const pc = PRIORITY_COLORS[lookupResult.priority];
+                        return (
+                            <div style={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                                    <div>
+                                        <code style={{ fontSize: '22px', fontWeight: '800', color: '#dc2626', fontFamily: 'monospace' }}>CARC {lookupResult.reasonCode}</code>
+                                        <div style={{ fontSize: '15px', color: '#0f172a', fontWeight: '600', marginTop: '6px' }}>{lookupResult.reasonDescription}</div>
+                                    </div>
+                                    <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', backgroundColor: pc.bg, color: pc.color }}>{pc.label} Priority</span>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                                    <div style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '12px' }}>
+                                        <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Routes To</div>
+                                        <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginTop: '4px' }}>{DEPT_ICONS[lookupResult.department] || ''} {lookupResult.department}</div>
+                                    </div>
+                                    <div style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '12px' }}>
+                                        <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>SLA</div>
+                                        <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginTop: '4px' }}>{lookupResult.sla} hours</div>
+                                    </div>
+                                    <div style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '12px' }}>
+                                        <div style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Category</div>
+                                        <div style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginTop: '4px', textTransform: 'capitalize' }}>{lookupResult.category?.replace(/([A-Z])/g, ' $1')}</div>
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: '14px', padding: '12px', backgroundColor: '#fef3c7', borderRadius: '8px', fontSize: '13px', color: '#92400e' }}>
+                                    <strong>Description:</strong> {lookupResult.categoryDescription}
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    <div style={{ marginTop: '24px' }}>
+                        <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '10px' }}>Quick Reference — Known CARC Codes</h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '8px' }}>
+                            {Object.entries(CARC_DESCRIPTIONS).map(([code, desc]) => (
+                                <div key={code} onClick={() => { setCarcLookup(code); }}
+                                    style={{ display: 'flex', gap: '10px', padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '6px', cursor: 'pointer', border: carcLookup === code ? '1px solid #dc2626' : '1px solid transparent', transition: 'border 0.2s' }}
+                                    onMouseEnter={e => e.currentTarget.style.borderColor = '#fca5a5'}
+                                    onMouseLeave={e => e.currentTarget.style.borderColor = carcLookup === code ? '#dc2626' : 'transparent'}
+                                >
+                                    <code style={{ fontSize: '12px', fontWeight: '700', color: '#dc2626', minWidth: '28px' }}>{code}</code>
+                                    <span style={{ fontSize: '12px', color: '#475569', lineHeight: '1.4' }}>{desc}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
